@@ -1,5 +1,38 @@
 // Mr. Black — client
 const SESSION_KEY = "mrblack:session";
+const THEME_KEY = "mrblack:theme";
+
+function effectiveTheme() {
+  const explicit = document.documentElement.getAttribute("data-theme");
+  if (explicit === "light" || explicit === "dark") return explicit;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = effectiveTheme() === "dark" ? "☀️" : "🌙";
+}
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    // ignore storage errors (e.g. private browsing)
+  }
+  applyTheme(next);
+});
+
+try {
+  applyTheme(localStorage.getItem(THEME_KEY));
+} catch {
+  applyTheme(null);
+}
 
 const el = (id) => document.getElementById(id);
 const screens = {
