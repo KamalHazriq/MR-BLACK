@@ -283,8 +283,24 @@ export const WORD_PAIRS: WordPair[] = [
   { civilian: "Drake", undercover: "Kendrick", category: "Music", difficulty: "hard" },
 ];
 
-export function pickWordPair(difficulty: "any" | "easy" | "medium" | "hard"): WordPair {
-  const pool = difficulty === "any" ? WORD_PAIRS : WORD_PAIRS.filter((p) => p.difficulty === difficulty);
-  const list = pool.length > 0 ? pool : WORD_PAIRS;
-  return list[Math.floor(Math.random() * list.length)];
+// A pair's stable id is its index into WORD_PAIRS (the array order never changes at runtime).
+export function wordPairId(index: number): string {
+  return String(index);
+}
+
+export function listWordPairs(): Array<WordPair & { id: string }> {
+  return WORD_PAIRS.map((p, i) => ({ ...p, id: wordPairId(i) }));
+}
+
+export function pickWordPair(
+  difficulty: "any" | "easy" | "medium" | "hard",
+  disabledIds: string[] = []
+): WordPair {
+  const disabled = new Set(disabledIds);
+  const matchesDifficulty = (p: WordPair) => difficulty === "any" || p.difficulty === difficulty;
+
+  let pool = WORD_PAIRS.filter((p, i) => matchesDifficulty(p) && !disabled.has(wordPairId(i)));
+  if (pool.length === 0) pool = WORD_PAIRS.filter(matchesDifficulty);
+  if (pool.length === 0) pool = WORD_PAIRS;
+  return pool[Math.floor(Math.random() * pool.length)];
 }

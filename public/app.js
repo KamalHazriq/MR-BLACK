@@ -84,6 +84,87 @@ let hasRevealedRole = false;
 let reconnectAttempts = 0;
 let intentionalClose = false;
 
+// ---- Word pairs picker ----
+
+let allWordPairs = [];
+const wordPairsByCategory = new Map();
+
+async function loadWordPairs() {
+  try {
+    const res = await fetch("/api/word-pairs");
+    allWordPairs = await res.json();
+    wordPairsByCategory.clear();
+    for (const p of allWordPairs) {
+      if (!wordPairsByCategory.has(p.category)) wordPairsByCategory.set(p.category, []);
+      wordPairsByCategory.get(p.category).push(p);
+    }
+    buildWordsPickerDom();
+    if (lastView && lastView.phase === "lobby") renderLobby(lastView);
+  } catch {
+    // Picker just stays empty if this fails; game still works with the full default word bank.
+  }
+}
+
+function buildWordsPickerDom() {
+  const container = el("setting-words-categories");
+  container.innerHTML = Array.from(wordPairsByCategory.entries())
+    .map(([category, pairs]) => {
+      const items = pairs
+        .map(
+          (p) => `
+            <label class="word-pair-item">
+              <input type="checkbox" data-pair-id="${p.id}" checked />
+              <span>${escapeHtml(p.civilian)} / ${escapeHtml(p.undercover)}</span>
+              <span class="diff-tag diff-${p.difficulty}">${p.difficulty}</span>
+            </label>`
+        )
+        .join("");
+      return `
+        <details class="word-category">
+          <summary>${escapeHtml(category)} <span class="muted">(${pairs.length})</span></summary>
+          <div class="word-category-actions">
+            <button type="button" data-cat-all="${escapeHtml(category)}">All</button>
+            <span class="muted">·</span>
+            <button type="button" data-cat-none="${escapeHtml(category)}">None</button>
+          </div>
+          <div class="word-pair-list">${items}</div>
+        </details>`;
+    })
+    .join("");
+
+  container.querySelectorAll("input[data-pair-id]").forEach((input) => {
+    input.addEventListener("change", sendDisabledPairsUpdate);
+  });
+  container.querySelectorAll("[data-cat-all]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setCategoryChecked(btn.dataset.catAll, true);
+      sendDisabledPairsUpdate();
+    });
+  });
+  container.querySelectorAll("[data-cat-none]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setCategoryChecked(btn.dataset.catNone, false);
+      sendDisabledPairsUpdate();
+    });
+  });
+}
+
+function setCategoryChecked(category, checked) {
+  const ids = new Set((wordPairsByCategory.get(category) || []).map((p) => p.id));
+  el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
+    if (ids.has(input.dataset.pairId)) input.checked = checked;
+  });
+}
+
+function sendDisabledPairsUpdate() {
+  const disabledPairs = Array.from(el("setting-words-categories").querySelectorAll("input[data-pair-id]"))
+    .filter((i) => !i.checked)
+    .map((i) => i.dataset.pairId);
+  send({ type: "updateSettings", settings: { disabledPairs } });
+}
+
+loadWordPairs();
+
 async function api(path, body) {
   const res = await fetch(path, {
     method: "POST",
@@ -293,6 +374,15 @@ function renderLobby(view) {
     document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
       btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
     });
+
+    if (allWordPairs.length > 0) {
+      const disabledSet = new Set(view.settings.disabledPairs);
+      el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
+        input.checked = !disabledSet.has(input.dataset.pairId);
+      });
+      const enabledCount = allWordPairs.length - view.settings.disabledPairs.length;
+      el("setting-words-count").textContent = `(${enabledCount}/${allWordPairs.length} enabled)`;
+    }
 
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
     const civilians = view.players.length - impostors;

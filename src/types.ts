@@ -19,6 +19,7 @@ export interface Settings {
   blankCount: number;
   difficulty: Difficulty;
   discussionSeconds: number;
+  disabledPairs: string[];
 }
 
 export interface LogEntry {

@@ -1,4 +1,5 @@
 import { Room } from "./room";
+import { listWordPairs } from "./words";
 
 export { Room };
 
@@ -36,6 +37,10 @@ export default {
     const path = url.pathname;
 
     try {
+      if (request.method === "GET" && path === "/api/word-pairs") {
+        return json(listWordPairs());
+      }
+
       if (request.method === "POST" && path === "/api/rooms") {
         const body = await request
           .json<{ hostName?: string }>()

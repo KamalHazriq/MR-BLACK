@@ -204,6 +204,50 @@ input[type="text"]:focus { border-color: var(--accent); }
 }
 .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+.disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after { content: "▾"; font-size: 0.9rem; }
+.disclosure[open] > summary::after { content: "▴"; }
+
+.word-categories { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 320px; overflow-y: auto; }
+.word-category {
+  background: var(--bg-elevated-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+}
+.word-category > summary {
+  cursor: pointer; list-style: none; display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600;
+}
+.word-category > summary::-webkit-details-marker { display: none; }
+.word-category > summary::after { content: "▾"; color: var(--text-muted); }
+.word-category[open] > summary::after { content: "▴"; }
+.word-category-actions { display: flex; gap: 6px; margin: 8px 0; }
+.word-category-actions button {
+  background: none; border: none; padding: 0; color: var(--accent); font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.word-pair-list { display: flex; flex-direction: column; gap: 2px; }
+.word-pair-item {
+  display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 0.85rem; cursor: pointer;
+}
+.word-pair-item input { accent-color: var(--accent); flex-shrink: 0; }
+.word-pair-item span:first-of-type { flex: 1; }
+.diff-tag {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 6px; border-radius: 999px;
+  flex-shrink: 0;
+}
+.diff-easy { background: rgba(28,143,84,0.18); color: var(--good); }
+.diff-medium { background: rgba(160,106,0,0.18); color: var(--warn); }
+.diff-hard { background: rgba(224,38,63,0.15); color: var(--accent); }
+
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   display: flex; align-items: flex-end; justify-content: center; z-index: 25;
