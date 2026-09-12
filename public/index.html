@@ -113,6 +113,19 @@
           </summary>
 
           <div class="disclosure-body">
+            <div id="setting-wordmode" class="pill-group pill-group-tight">
+              <button data-wordmode="all" class="pill active">All words</button>
+              <button data-wordmode="pick" class="pill">Pick categories</button>
+              <button data-wordmode="custom" class="pill">Custom only</button>
+            </div>
+            <p id="wordmode-hint" class="meta"></p>
+
+            <div id="words-builtin-block">
+              <div id="setting-words-categories" class="word-categories"></div>
+            </div>
+
+            <div class="divider-line"></div>
+
             <div class="custom-words">
               <p class="meta meta-strong">Your own words</p>
               <p class="meta">Add your own pairs — they're always in the draw.</p>
@@ -123,11 +136,6 @@
               </div>
               <div id="custom-list" class="custom-list"></div>
             </div>
-
-            <div class="divider-line"></div>
-
-            <p class="meta">Untick any built-in pair to take it out of the draw.</p>
-            <div id="setting-words-categories" class="word-categories"></div>
           </div>
         </details>
 

@@ -121,12 +121,11 @@ function buildWordsPickerDom() {
         .join("");
       return `
         <details class="word-category">
-          <summary>${escapeHtml(category)} <span class="muted">(${pairs.length})</span></summary>
-          <div class="word-category-actions">
-            <button type="button" data-cat-all="${escapeHtml(category)}">All</button>
-            <span class="muted">·</span>
-            <button type="button" data-cat-none="${escapeHtml(category)}">None</button>
-          </div>
+          <summary>
+            <input type="checkbox" data-category-toggle="${escapeHtml(category)}" checked />
+            <span class="word-category-name">${escapeHtml(category)}</span>
+            <span class="muted">${pairs.length}</span>
+          </summary>
           <div class="word-pair-list">${items}</div>
         </details>`;
     })
@@ -135,17 +134,26 @@ function buildWordsPickerDom() {
   container.querySelectorAll("input[data-pair-id]").forEach((input) => {
     input.addEventListener("change", sendDisabledPairsUpdate);
   });
-  container.querySelectorAll("[data-cat-all]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setCategoryChecked(btn.dataset.catAll, true);
+
+  container.querySelectorAll("input[data-category-toggle]").forEach((input) => {
+    // Keep the click from reaching <summary>, which would open/close the section.
+    input.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("change", () => {
+      setCategoryChecked(input.dataset.categoryToggle, input.checked);
       sendDisabledPairsUpdate();
     });
   });
-  container.querySelectorAll("[data-cat-none]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setCategoryChecked(btn.dataset.catNone, false);
-      sendDisabledPairsUpdate();
-    });
+}
+
+function syncCategoryToggles() {
+  el("setting-words-categories").querySelectorAll("input[data-category-toggle]").forEach((input) => {
+    const pairs = wordPairsByCategory.get(input.dataset.categoryToggle) || [];
+    const boxes = pairs
+      .map((p) => el("setting-words-categories").querySelector(`input[data-pair-id="${p.id}"]`))
+      .filter(Boolean);
+    const on = boxes.filter((b) => b.checked).length;
+    input.checked = on > 0;
+    input.indeterminate = on > 0 && on < boxes.length;
   });
 }
 
@@ -163,7 +171,45 @@ function sendDisabledPairsUpdate() {
   send({ type: "updateSettings", settings: { disabledPairs } });
 }
 
+document.querySelectorAll("#setting-wordmode .pill").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    send({ type: "updateSettings", settings: { wordMode: btn.dataset.wordmode } });
+  });
+});
+
 // ---- Custom word pairs ----
+
+function renderWordMode(view) {
+  const mode = view.settings.wordMode;
+  const custom = view.settings.customPairs.length;
+
+  document.querySelectorAll("#setting-wordmode .pill").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.wordmode === mode);
+  });
+  el("words-builtin-block").classList.toggle("hidden", mode !== "pick");
+
+  if (allWordPairs.length > 0) {
+    const disabledSet = new Set(view.settings.disabledPairs);
+    el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
+      input.checked = !disabledSet.has(input.dataset.pairId);
+    });
+    syncCategoryToggles();
+  }
+
+  const builtinInPlay =
+    mode === "custom" ? 0 : mode === "all" ? allWordPairs.length : allWordPairs.length - view.settings.disabledPairs.length;
+  const total = builtinInPlay + custom;
+
+  el("setting-words-count").textContent = `${total} in play`;
+  el("wordmode-hint").textContent =
+    mode === "all"
+      ? `Every built-in pair is in the draw${custom ? `, plus your ${custom}` : ""}.`
+      : mode === "pick"
+        ? `Tick a whole category, or open it to pick individual pairs. ${builtinInPlay} built-in${custom ? ` + ${custom} of yours` : ""}.`
+        : custom
+          ? `Only your ${custom} pair${custom === 1 ? "" : "s"} will be used.`
+          : "Add at least one pair below to use Custom mode.";
+}
 
 function renderCustomPairs(pairs) {
   el("custom-list").innerHTML = pairs
@@ -417,16 +463,7 @@ function renderLobby(view) {
     });
 
     renderCustomPairs(view.settings.customPairs);
-    if (allWordPairs.length > 0) {
-      const disabledSet = new Set(view.settings.disabledPairs);
-      el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
-        input.checked = !disabledSet.has(input.dataset.pairId);
-      });
-      const builtinEnabled = allWordPairs.length - view.settings.disabledPairs.length;
-      const custom = view.settings.customPairs.length;
-      const total = builtinEnabled + custom;
-      el("setting-words-count").textContent = custom > 0 ? `${total} in play · ${custom} yours` : `${total} in play`;
-    }
+    renderWordMode(view);
 
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
     const civilians = view.players.length - impostors;
@@ -437,6 +474,9 @@ function renderLobby(view) {
       canStart = false;
     } else if (civilians <= impostors) {
       hint = "Civilians must outnumber Undercover + Mr. Black.";
+      canStart = false;
+    } else if (view.settings.wordMode === "custom" && view.settings.customPairs.length === 0) {
+      hint = "Custom mode needs at least one of your own word pairs.";
       canStart = false;
     } else {
       hint = `${civilians} Civilian${civilians === 1 ? "" : "s"} · ${view.settings.undercoverCount} Undercover · ${view.settings.blankCount} Mr. Black`;

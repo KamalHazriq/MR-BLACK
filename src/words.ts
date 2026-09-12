@@ -303,17 +303,24 @@ export function listWordPairs(): Array<WordPair & { id: string }> {
 export function pickWordPair(
   difficulty: "any" | "easy" | "medium" | "hard",
   disabledIds: string[] = [],
-  customPairs: Array<{ civilian: string; undercover: string }> = []
+  customPairs: Array<{ civilian: string; undercover: string }> = [],
+  mode: "all" | "pick" | "custom" = "all"
 ): DrawnPair {
-  const disabled = new Set(disabledIds);
-  const matchesDifficulty = (p: WordPair) => difficulty === "any" || p.difficulty === difficulty;
-
-  const builtin = WORD_PAIRS.filter((p, i) => matchesDifficulty(p) && !disabled.has(wordPairId(i)));
   const custom: DrawnPair[] = customPairs.map((p) => ({
     civilian: p.civilian,
     undercover: p.undercover,
     category: "Your words",
   }));
+
+  if (mode === "custom" && custom.length > 0) {
+    return custom[Math.floor(Math.random() * custom.length)];
+  }
+
+  const disabled = new Set(disabledIds);
+  const matchesDifficulty = (p: WordPair) => difficulty === "any" || p.difficulty === difficulty;
+  const builtin = WORD_PAIRS.filter(
+    (p, i) => matchesDifficulty(p) && (mode === "all" || !disabled.has(wordPairId(i)))
+  );
 
   let pool: DrawnPair[] = [...builtin, ...custom];
   if (pool.length === 0) pool = WORD_PAIRS.filter(matchesDifficulty);

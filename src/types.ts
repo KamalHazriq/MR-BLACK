@@ -19,11 +19,16 @@ export interface CustomPair {
   undercover: string;
 }
 
+// "all" = the whole built-in bank, "pick" = only the categories/pairs left ticked,
+// "custom" = nothing but the host's own pairs.
+export type WordMode = "all" | "pick" | "custom";
+
 export interface Settings {
   undercoverCount: number;
   blankCount: number;
   difficulty: Difficulty;
   discussionSeconds: number;
+  wordMode: WordMode;
   disabledPairs: string[];
   customPairs: CustomPair[];
 }

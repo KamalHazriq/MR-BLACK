@@ -131,6 +131,7 @@ export class Room extends DurableObject<Env> {
         blankCount: 1,
         difficulty: "any",
         discussionSeconds: 0,
+        wordMode: "all",
         disabledPairs: [],
         customPairs: [],
       },
@@ -338,6 +339,9 @@ export class Room extends DurableObject<Env> {
     if (typeof partial.discussionSeconds === "number") {
       state.settings.discussionSeconds = Math.max(0, Math.min(300, Math.round(partial.discussionSeconds)));
     }
+    if (partial.wordMode && ["all", "pick", "custom"].includes(partial.wordMode)) {
+      state.settings.wordMode = partial.wordMode;
+    }
     if (partial.disabledPairs) {
       state.settings.disabledPairs = partial.disabledPairs.filter((id) => typeof id === "string").slice(0, 500);
     }
@@ -365,11 +369,15 @@ export class Room extends DurableObject<Env> {
     if (civilianCount <= impostorCount) {
       throw new Error("Civilians must outnumber the Undercover + Mr. Black roles");
     }
+    if (state.settings.wordMode === "custom" && state.settings.customPairs.length === 0) {
+      throw new Error("Add at least one word pair to use Custom mode");
+    }
 
     const pair = pickWordPair(
       state.settings.difficulty,
       state.settings.disabledPairs,
-      state.settings.customPairs
+      state.settings.customPairs,
+      state.settings.wordMode
     );
     state.civilianWord = pair.civilian;
     state.undercoverWord = pair.undercover;

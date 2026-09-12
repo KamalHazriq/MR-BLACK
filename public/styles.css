@@ -321,19 +321,18 @@ input[type="text"]:focus { border-color: var(--text); }
 }
 .word-category > summary {
   cursor: pointer; list-style: none;
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; align-items: center; gap: 10px;
   font-size: 0.9rem; font-weight: 500;
 }
 .word-category > summary::-webkit-details-marker { display: none; }
 .word-category > summary::after { content: "+"; color: var(--muted); font-family: var(--font-mono); }
 .word-category[open] > summary::after { content: "–"; }
+.word-category > summary input { accent-color: var(--text); flex-shrink: 0; cursor: pointer; }
+.word-category-name { flex: 1; }
 .word-category .muted { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
-.word-category-actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 6px; color: var(--faint); }
-.word-category-actions button {
-  background: none; border: none; padding: 0; cursor: pointer;
-  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em;
-  color: var(--muted); text-decoration: underline; text-underline-offset: 3px;
-}
+
+.pill-group-tight { margin-top: 0; margin-bottom: 12px; }
+#words-builtin-block.hidden + .divider-line { display: none; }
 .word-pair-list { display: flex; flex-direction: column; }
 .word-pair-item {
   display: flex; align-items: center; gap: 10px;
