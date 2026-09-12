@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mr. Black</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- HOME -->
+    <section id="screen-home" class="screen">
+      <div class="brand">
+        <div class="brand-mark">MB</div>
+        <h1>Mr. Black</h1>
+        <p class="tagline">One of you knows nothing. Everyone else is lying.</p>
+      </div>
+
+      <div class="card stack">
+        <label class="field">
+          <span>Your name</span>
+          <input id="home-name" type="text" maxlength="20" placeholder="e.g. Kamal" autocomplete="off" />
+        </label>
+        <button id="home-create-btn" class="btn btn-primary">Create a room</button>
+        <div class="divider">or</div>
+        <label class="field">
+          <span>Room code</span>
+          <input id="home-code" type="text" maxlength="6" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase" />
+        </label>
+        <button id="home-join-btn" class="btn btn-ghost">Join a room</button>
+      </div>
+      <p id="home-error" class="error-text"></p>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="screen-lobby" class="screen">
+      <header class="lobby-header">
+        <div>
+          <p class="eyebrow">Room code</p>
+          <button id="lobby-code" class="code-pill" title="Tap to copy">------</button>
+        </div>
+        <button id="lobby-leave" class="btn btn-ghost btn-small">Leave</button>
+      </header>
+
+      <div class="card">
+        <h2>Players <span id="lobby-count" class="muted"></span></h2>
+        <ul id="lobby-players" class="player-list"></ul>
+      </div>
+
+      <div id="lobby-settings" class="card stack">
+        <h2>Settings</h2>
+        <div class="stepper-row">
+          <span>Undercover</span>
+          <div class="stepper">
+            <button data-step="undercoverCount" data-dir="-1">-</button>
+            <span id="setting-undercover">1</span>
+            <button data-step="undercoverCount" data-dir="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <span>Mr. Black</span>
+          <div class="stepper">
+            <button data-step="blankCount" data-dir="-1">-</button>
+            <span id="setting-blank">1</span>
+            <button data-step="blankCount" data-dir="1">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <span>Difficulty</span>
+          <div id="setting-difficulty" class="pill-group">
+            <button data-difficulty="any" class="pill active">Any</button>
+            <button data-difficulty="easy" class="pill">Easy</button>
+            <button data-difficulty="medium" class="pill">Medium</button>
+            <button data-difficulty="hard" class="pill">Hard</button>
+          </div>
+        </div>
+        <p id="lobby-hint" class="muted small"></p>
+        <button id="lobby-start" class="btn btn-primary">Start round &rarr;</button>
+      </div>
+      <p id="lobby-nonhost-hint" class="muted small center">Waiting for the host to start the round&hellip;</p>
+      <p id="lobby-error" class="error-text"></p>
+    </section>
+
+    <!-- GAME -->
+    <section id="screen-game" class="screen">
+      <header class="game-header">
+        <button id="game-role-badge" class="role-badge role-hidden">Tap to reveal your role</button>
+        <div class="game-header-right">
+          <span id="game-round" class="muted small"></span>
+          <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
+        </div>
+      </header>
+
+      <div id="game-roster" class="roster"></div>
+
+      <div id="game-center" class="card center-panel"></div>
+
+      <aside id="game-log-panel" class="log-panel hidden">
+        <div class="log-panel-header">
+          <h3>Game log</h3>
+          <button id="game-log-close" class="btn btn-ghost btn-small">Close</button>
+        </div>
+        <ol id="game-log-list" class="log-list"></ol>
+      </aside>
+
+      <p id="game-error" class="error-text"></p>
+    </section>
+
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
