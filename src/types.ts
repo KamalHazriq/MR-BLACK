@@ -18,7 +18,6 @@ export interface Settings {
   undercoverCount: number;
   blankCount: number;
   difficulty: Difficulty;
-  categories: string[];
   discussionSeconds: number;
 }
 

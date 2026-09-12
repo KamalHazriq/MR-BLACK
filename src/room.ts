@@ -130,7 +130,6 @@ export class Room extends DurableObject<Env> {
         undercoverCount: 1,
         blankCount: 1,
         difficulty: "any",
-        categories: [],
         discussionSeconds: 0,
       },
       round: 0,
@@ -334,7 +333,6 @@ export class Room extends DurableObject<Env> {
       state.settings.blankCount = Math.max(0, Math.min(6, Math.round(partial.blankCount)));
     }
     if (partial.difficulty) state.settings.difficulty = partial.difficulty;
-    if (partial.categories) state.settings.categories = partial.categories.slice(0, 20);
     if (typeof partial.discussionSeconds === "number") {
       state.settings.discussionSeconds = Math.max(0, Math.min(300, Math.round(partial.discussionSeconds)));
     }
@@ -354,7 +352,7 @@ export class Room extends DurableObject<Env> {
       throw new Error("Civilians must outnumber the Undercover + Mr. Black roles");
     }
 
-    const pair = pickWordPair(state.settings.difficulty, state.settings.categories);
+    const pair = pickWordPair(state.settings.difficulty);
     state.civilianWord = pair.civilian;
     state.undercoverWord = pair.undercover;
     state.category = pair.category;

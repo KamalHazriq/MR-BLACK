@@ -2,17 +2,6 @@
 const SESSION_KEY = "mrblack:session";
 const THEME_KEY = "mrblack:theme";
 
-// Must match src/words.ts CATEGORIES
-const CATEGORIES = [
-  "Food & Drink",
-  "Animals",
-  "Places",
-  "Everyday Objects",
-  "Occupations",
-  "Entertainment & Sports",
-  "Nature",
-];
-
 function effectiveTheme() {
   const explicit = document.documentElement.getAttribute("data-theme");
   if (explicit === "light" || explicit === "dark") return explicit;
@@ -248,22 +237,6 @@ document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
   });
 });
 
-// Build the categories checkbox list once; selection is driven by server settings on render.
-el("setting-categories").innerHTML = CATEGORIES.map(
-  (cat) => `<label><input type="checkbox" value="${escapeHtml(cat)}" checked /> ${escapeHtml(cat)}</label>`
-).join("");
-
-el("setting-categories").addEventListener("change", () => {
-  const checked = Array.from(el("setting-categories").querySelectorAll("input:checked")).map((i) => i.value);
-  if (checked.length === 0) {
-    // Selecting none means "all" server-side, which is confusing — keep at least one checked.
-    render(lastView);
-    return;
-  }
-  // Sending every category is equivalent to "all" (no filter) server-side.
-  send({ type: "updateSettings", settings: { categories: checked.length === CATEGORIES.length ? [] : checked } });
-});
-
 el("lobby-start").addEventListener("click", () => {
   send({ type: "startGame" });
 });
@@ -319,12 +292,6 @@ function renderLobby(view) {
     });
     document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
       btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
-    });
-
-    const selectedCategories = view.settings.categories.length === 0 ? CATEGORIES : view.settings.categories;
-    el("setting-categories-count").textContent = `(${selectedCategories.length} selected)`;
-    el("setting-categories").querySelectorAll("input").forEach((input) => {
-      input.checked = selectedCategories.includes(input.value);
     });
 
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
