@@ -14,12 +14,18 @@ export interface Player {
   role?: Role;
 }
 
+export interface CustomPair {
+  civilian: string;
+  undercover: string;
+}
+
 export interface Settings {
   undercoverCount: number;
   blankCount: number;
   difficulty: Difficulty;
   discussionSeconds: number;
   disabledPairs: string[];
+  customPairs: CustomPair[];
 }
 
 export interface LogEntry {

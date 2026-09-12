@@ -15,7 +15,7 @@ function applyTheme(theme) {
     document.documentElement.removeAttribute("data-theme");
   }
   const btn = document.getElementById("theme-toggle");
-  if (btn) btn.textContent = effectiveTheme() === "dark" ? "☀️" : "🌙";
+  if (btn) btn.textContent = effectiveTheme() === "dark" ? "◑" : "◐";
 }
 
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -162,6 +162,47 @@ function sendDisabledPairsUpdate() {
     .map((i) => i.dataset.pairId);
   send({ type: "updateSettings", settings: { disabledPairs } });
 }
+
+// ---- Custom word pairs ----
+
+function renderCustomPairs(pairs) {
+  el("custom-list").innerHTML = pairs
+    .map(
+      (p, i) => `
+      <div class="custom-item">
+        <span>${escapeHtml(p.civilian)} / ${escapeHtml(p.undercover)}</span>
+        <button type="button" data-remove-custom="${i}" aria-label="Remove">&times;</button>
+      </div>`
+    )
+    .join("");
+}
+
+el("custom-list").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-remove-custom]");
+  if (!btn || !lastView) return;
+  const index = Number(btn.dataset.removeCustom);
+  const customPairs = lastView.settings.customPairs.filter((_, i) => i !== index);
+  send({ type: "updateSettings", settings: { customPairs } });
+});
+
+function addCustomPair() {
+  if (!lastView) return;
+  const civilian = el("custom-civilian").value.trim();
+  const undercover = el("custom-undercover").value.trim();
+  if (!civilian || !undercover) return showError("Enter both words");
+  const customPairs = [...lastView.settings.customPairs, { civilian, undercover }];
+  send({ type: "updateSettings", settings: { customPairs } });
+  el("custom-civilian").value = "";
+  el("custom-undercover").value = "";
+  el("custom-civilian").focus();
+}
+
+el("custom-add").addEventListener("click", addCustomPair);
+["custom-civilian", "custom-undercover"].forEach((id) => {
+  el(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addCustomPair();
+  });
+});
 
 loadWordPairs();
 
@@ -375,13 +416,16 @@ function renderLobby(view) {
       btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
     });
 
+    renderCustomPairs(view.settings.customPairs);
     if (allWordPairs.length > 0) {
       const disabledSet = new Set(view.settings.disabledPairs);
       el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
         input.checked = !disabledSet.has(input.dataset.pairId);
       });
-      const enabledCount = allWordPairs.length - view.settings.disabledPairs.length;
-      el("setting-words-count").textContent = `(${enabledCount}/${allWordPairs.length} enabled)`;
+      const builtinEnabled = allWordPairs.length - view.settings.disabledPairs.length;
+      const custom = view.settings.customPairs.length;
+      const total = builtinEnabled + custom;
+      el("setting-words-count").textContent = custom > 0 ? `${total} in play · ${custom} yours` : `${total} in play`;
     }
 
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
@@ -412,7 +456,14 @@ function renderGame(view) {
   renderRoster(view);
   renderCenterPanel(view);
   renderLog(view);
-  el("game-round").textContent = view.phase === "gameOver" ? "Game over" : `Round ${view.round}`;
+  const phaseLabel = {
+    clue: "Clues",
+    discussion: "Discussion",
+    voting: "Voting",
+    guess: "Final guess",
+  }[view.phase];
+  el("game-round").textContent =
+    view.phase === "gameOver" ? "Game over" : `Round ${view.round} · ${phaseLabel}`;
 }
 
 function renderRoleBadge(view) {
@@ -420,7 +471,7 @@ function renderRoleBadge(view) {
   badge.className = "role-badge";
   if (!hasRevealedRole) {
     badge.classList.add("role-hidden");
-    badge.textContent = "Tap to reveal your role";
+    badge.innerHTML = '<span class="role-badge-hint">Tap to reveal your role</span>';
     return;
   }
   const role = view.you.role;
@@ -460,20 +511,27 @@ function renderCenterPanel(view) {
   panel.innerHTML = "";
 }
 
-function renderDiscussionPhase(panel, view) {
+function clueFeedHtml(view) {
   const roundClues = view.clues.filter((c) => c.round === view.round);
-  const cluesHtml = roundClues
-    .map((c) => {
-      const p = view.players.find((pp) => pp.id === c.playerId);
-      return `<div class="small muted">${escapeHtml(p?.name || "?")}: "${escapeHtml(c.text)}"</div>`;
-    })
-    .join("");
+  if (!roundClues.length) return "";
+  return (
+    `<div class="clue-feed">` +
+    roundClues
+      .map((c) => {
+        const p = view.players.find((pp) => pp.id === c.playerId);
+        return `<div class="clue-feed-item"><strong>${escapeHtml(p?.name || "?")}</strong> — "${escapeHtml(c.text)}"</div>`;
+      })
+      .join("") +
+    `</div>`
+  );
+}
 
+function renderDiscussionPhase(panel, view) {
   panel.innerHTML = `
     <h2>Talk it over</h2>
     <div id="discussion-countdown" class="discussion-countdown">--:--</div>
-    <p class="small muted center">Discuss out loud (or in Discord), then voting opens automatically.</p>
-    <div class="stack">${cluesHtml}</div>
+    <p class="meta center">Voting opens automatically when the clock runs out.</p>
+    ${clueFeedHtml(view)}
     ${view.you.isHost ? '<button id="discussion-skip" class="btn btn-ghost btn-small">Skip to vote</button>' : ""}
   `;
 
@@ -498,7 +556,6 @@ function renderDiscussionPhase(panel, view) {
 function renderCluePhase(panel, view) {
   const isYourTurn = view.turnPlayerId === view.you.id;
   const turnPlayer = view.players.find((p) => p.id === view.turnPlayerId);
-  const roundClues = view.clues.filter((c) => c.round === view.round);
 
   let html = "";
   if (isYourTurn && view.you.alive) {
@@ -512,14 +569,7 @@ function renderCluePhase(panel, view) {
     html += `<h2>Clue round</h2><p>Waiting for <strong>${escapeHtml(turnPlayer?.name || "?")}</strong> to give a clue&hellip;</p>`;
   }
 
-  if (roundClues.length) {
-    html += `<div class="stack">` + roundClues
-      .map((c) => {
-        const p = view.players.find((pp) => pp.id === c.playerId);
-        return `<div class="small muted">${escapeHtml(p?.name || "?")}: "${escapeHtml(c.text)}"</div>`;
-      })
-      .join("") + `</div>`;
-  }
+  html += clueFeedHtml(view);
 
   if (view.you.isHost) {
     html += `<button id="clue-skip" class="btn btn-ghost btn-small">Skip current player</button>`;
@@ -544,7 +594,7 @@ function renderCluePhase(panel, view) {
 
 function renderVotingPhase(panel, view) {
   if (!view.you.alive) {
-    panel.innerHTML = `<h2>Voting</h2><p>You've been eliminated — watch how it plays out.</p><p class="muted small">${view.votesInCount}/${view.voteEligibleCount} voted</p>`;
+    panel.innerHTML = `<h2>Voting</h2><p>You've been eliminated — watch how it plays out.</p><p class="meta">${view.votesInCount}/${view.voteEligibleCount} voted</p>`;
     return;
   }
 
@@ -552,7 +602,7 @@ function renderVotingPhase(panel, view) {
     ? view.players.filter((p) => view.voteCandidates.includes(p.id))
     : view.players.filter((p) => p.alive && p.id !== view.you.id);
 
-  const tieNote = view.voteCandidates ? `<p class="small muted">Revote — pick between the tied players.</p>` : "";
+  const tieNote = view.voteCandidates ? `<p class="meta">Revote — pick between the tied players.</p>` : "";
 
   panel.innerHTML = `
     <h2>Who's suspicious?</h2>
@@ -565,7 +615,7 @@ function renderVotingPhase(panel, view) {
         })
         .join("")}
     </div>
-    <p class="small muted">${view.votesInCount}/${view.voteEligibleCount} voted</p>
+    <p class="meta">${view.votesInCount}/${view.voteEligibleCount} voted</p>
   `;
 
   panel.querySelectorAll("[data-vote]").forEach((btn) => {
@@ -612,7 +662,7 @@ function renderGameOver(panel, view) {
   let html = `<div class="winner-banner ${view.winner}">${escapeHtml(winnerLabel)}</div>`;
 
   if (reveal) {
-    html += `<p class="small muted">Category: ${escapeHtml(reveal.category)} · Civilian word: <strong>${escapeHtml(reveal.civilianWord)}</strong> · Undercover word: <strong>${escapeHtml(reveal.undercoverWord)}</strong></p>`;
+    html += `<p class="meta">Category: ${escapeHtml(reveal.category)} · Civilian word: <strong>${escapeHtml(reveal.civilianWord)}</strong> · Undercover word: <strong>${escapeHtml(reveal.undercoverWord)}</strong></p>`;
     html += `<ul class="reveal-list">` + view.players
       .map((p) => `<li><span>${escapeHtml(p.name)}</span><span>${escapeHtml(roleLabel(reveal.allRoles[p.id]))}</span></li>`)
       .join("") + `</ul>`;
@@ -621,7 +671,7 @@ function renderGameOver(panel, view) {
   if (view.you.isHost) {
     html += `<button id="play-again" class="btn btn-primary">Play again</button>`;
   } else {
-    html += `<p class="muted small center">Waiting for the host to start a new game&hellip;</p>`;
+    html += `<p class="meta center">Waiting for the host to start a new game&hellip;</p>`;
   }
 
   panel.innerHTML = html;

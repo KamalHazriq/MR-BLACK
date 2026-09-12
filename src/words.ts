@@ -283,6 +283,12 @@ export const WORD_PAIRS: WordPair[] = [
   { civilian: "Drake", undercover: "Kendrick", category: "Music", difficulty: "hard" },
 ];
 
+export interface DrawnPair {
+  civilian: string;
+  undercover: string;
+  category: string;
+}
+
 // A pair's stable id is its index into WORD_PAIRS (the array order never changes at runtime).
 export function wordPairId(index: number): string {
   return String(index);
@@ -292,14 +298,24 @@ export function listWordPairs(): Array<WordPair & { id: string }> {
   return WORD_PAIRS.map((p, i) => ({ ...p, id: wordPairId(i) }));
 }
 
+// Host-written pairs are always eligible — they were added on purpose, so they
+// skip both the difficulty filter and the per-pair toggles.
 export function pickWordPair(
   difficulty: "any" | "easy" | "medium" | "hard",
-  disabledIds: string[] = []
-): WordPair {
+  disabledIds: string[] = [],
+  customPairs: Array<{ civilian: string; undercover: string }> = []
+): DrawnPair {
   const disabled = new Set(disabledIds);
   const matchesDifficulty = (p: WordPair) => difficulty === "any" || p.difficulty === difficulty;
 
-  let pool = WORD_PAIRS.filter((p, i) => matchesDifficulty(p) && !disabled.has(wordPairId(i)));
+  const builtin = WORD_PAIRS.filter((p, i) => matchesDifficulty(p) && !disabled.has(wordPairId(i)));
+  const custom: DrawnPair[] = customPairs.map((p) => ({
+    civilian: p.civilian,
+    undercover: p.undercover,
+    category: "Your words",
+  }));
+
+  let pool: DrawnPair[] = [...builtin, ...custom];
   if (pool.length === 0) pool = WORD_PAIRS.filter(matchesDifficulty);
   if (pool.length === 0) pool = WORD_PAIRS;
   return pool[Math.floor(Math.random() * pool.length)];

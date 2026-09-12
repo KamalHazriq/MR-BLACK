@@ -4,76 +4,100 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Mr. Black</title>
+  <meta name="description" content="Mr. Black — the online social deduction word game. One of you knows nothing." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div id="app">
-    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode">🌙</button>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode">
+      <span aria-hidden="true">◐</span>
+    </button>
 
     <!-- HOME -->
     <section id="screen-home" class="screen">
-      <div class="brand">
-        <div class="brand-mark">MB</div>
-        <h1>Mr. Black</h1>
-        <p class="tagline">One of you knows nothing. Everyone else is lying.</p>
-        <p class="home-links">
-          <button id="link-how-to-play" class="link-btn" type="button">How to play</button>
-          <span class="muted">·</span>
-          <button id="link-faq" class="link-btn" type="button">FAQ</button>
-        </p>
+      <header class="page-head">
+        <p class="eyebrow">Mr. Black</p>
+        <h1 class="display">One of you<br />is lying.</h1>
+        <p class="lede">The social deduction word game — everyone gets a word, except one of you. Play with up to 20 friends, each on your own phone.</p>
+      </header>
+
+      <div class="card stack-lg">
+        <div class="field">
+          <label class="section-label" for="home-name">Your name</label>
+          <input id="home-name" type="text" maxlength="20" placeholder="e.g. Kamal" autocomplete="off" />
+        </div>
+        <button id="home-create-btn" class="btn btn-primary btn-block">Create a room &rarr;</button>
+
+        <div class="rule"><span>or</span></div>
+
+        <div class="field">
+          <label class="section-label" for="home-code">Room code</label>
+          <input id="home-code" type="text" maxlength="6" placeholder="ABCDE" autocomplete="off" spellcheck="false" class="input-code" />
+        </div>
+        <button id="home-join-btn" class="btn btn-ghost btn-block">Join a room</button>
       </div>
 
-      <div class="card stack">
-        <label class="field">
-          <span>Your name</span>
-          <input id="home-name" type="text" maxlength="20" placeholder="e.g. Kamal" autocomplete="off" />
-        </label>
-        <button id="home-create-btn" class="btn btn-primary">Create a room</button>
-        <div class="divider">or</div>
-        <label class="field">
-          <span>Room code</span>
-          <input id="home-code" type="text" maxlength="6" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase" />
-        </label>
-        <button id="home-join-btn" class="btn btn-ghost">Join a room</button>
-      </div>
       <p id="home-error" class="error-text"></p>
+
+      <nav class="foot-links">
+        <button id="link-how-to-play" class="link-btn" type="button">How to play</button>
+        <span aria-hidden="true">·</span>
+        <button id="link-faq" class="link-btn" type="button">FAQ</button>
+      </nav>
     </section>
 
     <!-- LOBBY -->
     <section id="screen-lobby" class="screen">
-      <header class="lobby-header">
+      <header class="page-head page-head-row">
         <div>
           <p class="eyebrow">Room code</p>
-          <button id="lobby-code" class="code-pill" title="Tap to copy">------</button>
+          <button id="lobby-code" class="display display-code" title="Tap to copy">-----</button>
+          <p class="meta">Tap the code to copy it, then send it to your friends.</p>
         </div>
         <button id="lobby-leave" class="btn btn-ghost btn-small">Leave</button>
       </header>
 
       <div class="card">
-        <h2>Players <span id="lobby-count" class="muted"></span></h2>
+        <div class="card-head">
+          <span class="section-label">Players</span>
+          <span id="lobby-count" class="meta"></span>
+        </div>
         <ul id="lobby-players" class="player-list"></ul>
       </div>
 
-      <div id="lobby-settings" class="card stack">
-        <h2>Settings</h2>
-        <div class="stepper-row">
-          <span>Undercover</span>
-          <div class="stepper">
-            <button data-step="undercoverCount" data-dir="-1">-</button>
-            <span id="setting-undercover">1</span>
-            <button data-step="undercoverCount" data-dir="1">+</button>
+      <div id="lobby-settings" class="stack">
+        <div class="card">
+          <div class="card-head">
+            <span class="section-label">Roles</span>
           </div>
-        </div>
-        <div class="stepper-row">
-          <span>Mr. Black</span>
-          <div class="stepper">
-            <button data-step="blankCount" data-dir="-1">-</button>
-            <span id="setting-blank">1</span>
-            <button data-step="blankCount" data-dir="1">+</button>
+          <p class="meta">Everyone else is a Civilian.</p>
+          <div class="stepper-row">
+            <span>Undercover</span>
+            <div class="stepper">
+              <button data-step="undercoverCount" data-dir="-1" aria-label="Fewer undercovers">&minus;</button>
+              <span id="setting-undercover">1</span>
+              <button data-step="undercoverCount" data-dir="1" aria-label="More undercovers">+</button>
+            </div>
           </div>
+          <div class="stepper-row">
+            <span>Mr. Black</span>
+            <div class="stepper">
+              <button data-step="blankCount" data-dir="-1" aria-label="Fewer Mr Blacks">&minus;</button>
+              <span id="setting-blank">1</span>
+              <button data-step="blankCount" data-dir="1" aria-label="More Mr Blacks">+</button>
+            </div>
+          </div>
+          <p id="lobby-hint" class="meta meta-strong"></p>
         </div>
-        <div class="field">
-          <span>Difficulty</span>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="section-label">Difficulty</span>
+          </div>
+          <p class="meta">How close the Undercover's word is to the Civilians'.</p>
           <div id="setting-difficulty" class="pill-group">
             <button data-difficulty="any" class="pill active">Any</button>
             <button data-difficulty="easy" class="pill">Easy</button>
@@ -81,13 +105,37 @@
             <button data-difficulty="hard" class="pill">Hard</button>
           </div>
         </div>
-        <details class="field disclosure">
-          <summary>Words <span id="setting-words-count" class="muted"></span></summary>
-          <p class="muted small">Untick any word pair you want to take out of the draw.</p>
-          <div id="setting-words-categories" class="word-categories"></div>
+
+        <details class="card disclosure">
+          <summary>
+            <span class="section-label">Words</span>
+            <span id="setting-words-count" class="meta"></span>
+          </summary>
+
+          <div class="disclosure-body">
+            <div class="custom-words">
+              <p class="meta meta-strong">Your own words</p>
+              <p class="meta">Add your own pairs — they're always in the draw.</p>
+              <div class="custom-word-row">
+                <input id="custom-civilian" type="text" maxlength="40" placeholder="Civilian word" autocomplete="off" />
+                <input id="custom-undercover" type="text" maxlength="40" placeholder="Undercover word" autocomplete="off" />
+                <button id="custom-add" class="btn btn-ghost btn-small" type="button">Add</button>
+              </div>
+              <div id="custom-list" class="custom-list"></div>
+            </div>
+
+            <div class="divider-line"></div>
+
+            <p class="meta">Untick any built-in pair to take it out of the draw.</p>
+            <div id="setting-words-categories" class="word-categories"></div>
+          </div>
         </details>
-        <div class="field">
-          <span>Discussion timer</span>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="section-label">Discussion timer</span>
+          </div>
+          <p class="meta">Optional countdown after the clues, before voting opens.</p>
           <div id="setting-discussion" class="pill-group">
             <button data-discussion="0" class="pill active">Off</button>
             <button data-discussion="30" class="pill">30s</button>
@@ -96,33 +144,37 @@
             <button data-discussion="120" class="pill">120s</button>
           </div>
         </div>
-        <p id="lobby-hint" class="muted small"></p>
-        <button id="lobby-start" class="btn btn-primary">Start round &rarr;</button>
+
+        <button id="lobby-start" class="btn btn-primary btn-block">Start round &rarr;</button>
       </div>
-      <p id="lobby-nonhost-hint" class="muted small center">Waiting for the host to start the round&hellip;</p>
+
+      <p id="lobby-nonhost-hint" class="meta center">Waiting for the host to start the round&hellip;</p>
       <p id="lobby-error" class="error-text"></p>
     </section>
 
     <!-- GAME -->
     <section id="screen-game" class="screen">
-      <header class="game-header">
-        <button id="game-role-badge" class="role-badge role-hidden">Tap to reveal your role</button>
-        <div class="game-header-right">
-          <span id="game-round" class="muted small"></span>
-          <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
-        </div>
+      <header class="game-head">
+        <span id="game-round" class="eyebrow"></span>
+        <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
       </header>
+
+      <button id="game-role-badge" class="role-badge role-hidden">
+        <span class="role-badge-hint">Tap to reveal your role</span>
+      </button>
 
       <div id="game-roster" class="roster"></div>
 
       <div id="game-center" class="card center-panel"></div>
 
-      <aside id="game-log-panel" class="log-panel hidden">
-        <div class="log-panel-header">
-          <h3>Game log</h3>
-          <button id="game-log-close" class="btn btn-ghost btn-small">Close</button>
+      <aside id="game-log-panel" class="modal-overlay hidden">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>Game log</h3>
+            <button id="game-log-close" class="btn btn-ghost btn-small">Close</button>
+          </div>
+          <ol id="game-log-list" class="log-list"></ol>
         </div>
-        <ol id="game-log-list" class="log-list"></ol>
       </aside>
 
       <p id="game-error" class="error-text"></p>
@@ -135,33 +187,33 @@
           <h3>How to play</h3>
           <button id="modal-how-to-play-close" class="btn btn-ghost btn-small">Close</button>
         </div>
-        <div class="modal-body stack">
+        <div class="modal-body">
           <div class="step">
-            <span class="step-num">1</span>
+            <span class="step-num">01</span>
             <div>
               <strong>Roles.</strong> Most of you are Civilians and share a secret word. One or more players are Undercover and get a similar-but-different word. One or more are Mr. Black and get no word at all.
             </div>
           </div>
           <div class="step">
-            <span class="step-num">2</span>
+            <span class="step-num">02</span>
             <div>
               <strong>Join.</strong> Everyone opens the same link on their own phone or laptop and joins with the room code — no passing a phone around, your role only ever shows on your own screen.
             </div>
           </div>
           <div class="step">
-            <span class="step-num">3</span>
+            <span class="step-num">03</span>
             <div>
               <strong>Clues.</strong> Taking turns, each player types one short clue about their word into the shared log, so everyone can see who said what.
             </div>
           </div>
           <div class="step">
-            <span class="step-num">4</span>
+            <span class="step-num">04</span>
             <div>
-              <strong>Vote.</strong> Talk it over (in person or on a call), then everyone taps to vote at the same time. Whoever gets the most votes is eliminated and their role is revealed.
+              <strong>Vote.</strong> Talk it over, then everyone taps to vote at the same time. Whoever gets the most votes is eliminated and their role is revealed.
             </div>
           </div>
           <div class="step">
-            <span class="step-num">5</span>
+            <span class="step-num">05</span>
             <div>
               <strong>Win.</strong> Civilians win by voting out every Undercover and Mr. Black. The impostors win by surviving until they equal the Civilians in number. If Mr. Black is caught, they get one guess at the Civilian word — guess right and the impostors steal the round.
             </div>
@@ -177,14 +229,14 @@
           <h3>FAQ</h3>
           <button id="modal-faq-close" class="btn btn-ghost btn-small">Close</button>
         </div>
-        <div class="modal-body stack">
+        <div class="modal-body">
           <details class="faq-item">
             <summary>Do we need an app or an account?</summary>
             <p>No. Everyone just opens the link in a browser. There's nothing to install and nothing to sign up for.</p>
           </details>
           <details class="faq-item">
             <summary>How many people can play?</summary>
-            <p>Up to 20 in one room. The sweet spot for a fast, tense game is usually 5–10.</p>
+            <p>Up to 20 in one room. The sweet spot for a fast, tense game is usually 5&ndash;10.</p>
           </details>
           <details class="faq-item">
             <summary>Do we need to be in the same room?</summary>
@@ -199,16 +251,16 @@
             <p>Undercover has a real word — just a slightly different one from the Civilians, so they can bluff off actual knowledge. Mr. Black has no word at all and is bluffing completely blind.</p>
           </details>
           <details class="faq-item">
+            <summary>Can we use our own words?</summary>
+            <p>Yes. In the lobby, the host can open the Words section and add custom pairs, or untick any of the built-in pairs to take them out of the draw.</p>
+          </details>
+          <details class="faq-item">
             <summary>Is my word visible to anyone else?</summary>
             <p>No. Your role and word only ever appear on your own device, behind a tap-to-reveal, and are never shown to other players.</p>
           </details>
           <details class="faq-item">
             <summary>What happens if I get disconnected?</summary>
             <p>Just reopen the link — you'll drop right back into your seat with your role and the game state intact, as long as the room is still active.</p>
-          </details>
-          <details class="faq-item">
-            <summary>Is there a database or is anything saved?</summary>
-            <p>No database. Each room's state lives only for the life of that game and is cleared automatically once everyone leaves.</p>
           </details>
         </div>
       </div>

@@ -132,6 +132,7 @@ export class Room extends DurableObject<Env> {
         difficulty: "any",
         discussionSeconds: 0,
         disabledPairs: [],
+        customPairs: [],
       },
       round: 0,
       turnOrder: [],
@@ -340,6 +341,15 @@ export class Room extends DurableObject<Env> {
     if (partial.disabledPairs) {
       state.settings.disabledPairs = partial.disabledPairs.filter((id) => typeof id === "string").slice(0, 500);
     }
+    if (partial.customPairs) {
+      state.settings.customPairs = partial.customPairs
+        .map((p) => ({
+          civilian: String(p?.civilian ?? "").trim().slice(0, 40),
+          undercover: String(p?.undercover ?? "").trim().slice(0, 40),
+        }))
+        .filter((p) => p.civilian && p.undercover)
+        .slice(0, 50);
+    }
   }
 
   private actionStartGame(player: Player) {
@@ -356,7 +366,11 @@ export class Room extends DurableObject<Env> {
       throw new Error("Civilians must outnumber the Undercover + Mr. Black roles");
     }
 
-    const pair = pickWordPair(state.settings.difficulty, state.settings.disabledPairs);
+    const pair = pickWordPair(
+      state.settings.difficulty,
+      state.settings.disabledPairs,
+      state.settings.customPairs
+    );
     state.civilianWord = pair.civilian;
     state.undercoverWord = pair.undercover;
     state.category = pair.category;
