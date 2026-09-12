@@ -131,6 +131,7 @@ export class Room extends DurableObject<Env> {
         blankCount: 1,
         difficulty: "any",
         categories: [],
+        discussionSeconds: 0,
       },
       round: 0,
       turnOrder: [],
@@ -143,6 +144,7 @@ export class Room extends DurableObject<Env> {
       civilianWord: null,
       undercoverWord: null,
       category: null,
+      discussionEndsAt: null,
       log: [],
       winner: null,
       nextLogId: 1,
@@ -210,6 +212,7 @@ export class Room extends DurableObject<Env> {
     this.ctx.acceptWebSocket(pair[1], [playerId]);
     player.connected = true;
     this.log("system", `${player.name} connected.`);
+    this.checkDiscussionExpiry();
     await this.ctx.storage.deleteAlarm();
     await this.persist();
     this.broadcast();
@@ -218,6 +221,16 @@ export class Room extends DurableObject<Env> {
   }
 
   // ---- WebSocket handlers ----
+
+  // A discussion-end alarm can be delayed by a later idle-cleanup alarm
+  // overwriting it (only one alarm exists per DO), so also check expiry
+  // opportunistically whenever a player connects or sends a message.
+  private checkDiscussionExpiry(): void {
+    const state = this.state;
+    if (state && state.phase === "discussion" && state.discussionEndsAt !== null && Date.now() >= state.discussionEndsAt) {
+      this.endDiscussion();
+    }
+  }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     await this.ensureLoaded();
@@ -235,6 +248,7 @@ export class Room extends DurableObject<Env> {
     }
 
     try {
+      this.checkDiscussionExpiry();
       switch (msg.type) {
         case "updateSettings":
           this.actionUpdateSettings(player, msg.settings);
@@ -288,6 +302,14 @@ export class Room extends DurableObject<Env> {
 
   async alarm(): Promise<void> {
     await this.ensureLoaded();
+    if (!this.state) return;
+
+    if (this.state.phase === "discussion" && this.state.discussionEndsAt !== null && Date.now() >= this.state.discussionEndsAt - 250) {
+      this.endDiscussion();
+      await this.persist();
+      this.broadcast();
+    }
+
     if (this.ctx.getWebSockets().length === 0) {
       await this.ctx.storage.deleteAll();
       this.state = null;
@@ -313,6 +335,9 @@ export class Room extends DurableObject<Env> {
     }
     if (partial.difficulty) state.settings.difficulty = partial.difficulty;
     if (partial.categories) state.settings.categories = partial.categories.slice(0, 20);
+    if (typeof partial.discussionSeconds === "number") {
+      state.settings.discussionSeconds = Math.max(0, Math.min(300, Math.round(partial.discussionSeconds)));
+    }
   }
 
   private actionStartGame(player: Player) {
@@ -360,6 +385,7 @@ export class Room extends DurableObject<Env> {
     state.turnOrder = shuffle(aliveIds);
     state.turnIndex = 0;
     state.phase = "clue";
+    state.discussionEndsAt = null;
     this.log("roundStart", `Round ${state.round} begins.`);
   }
 
@@ -384,6 +410,8 @@ export class Room extends DurableObject<Env> {
       this.advanceTurn();
     } else if (state.phase === "guess" && state.pendingGuessPlayerId) {
       this.resolveGuess(state.pendingGuessPlayerId, "");
+    } else if (state.phase === "discussion") {
+      this.endDiscussion();
     }
   }
 
@@ -391,11 +419,28 @@ export class Room extends DurableObject<Env> {
     const state = this.state!;
     state.turnIndex += 1;
     if (state.turnIndex >= state.turnOrder.length) {
-      state.phase = "voting";
-      state.votes = {};
-      state.voteCandidates = null;
-      this.log("system", "Clue round complete — time to vote.");
+      if (state.settings.discussionSeconds > 0) {
+        state.phase = "discussion";
+        state.discussionEndsAt = Date.now() + state.settings.discussionSeconds * 1000;
+        this.ctx.storage.setAlarm(state.discussionEndsAt);
+        this.log("system", "Clues are in — talk it over before voting.");
+      } else {
+        state.phase = "voting";
+        state.votes = {};
+        state.voteCandidates = null;
+        this.log("system", "Clue round complete — time to vote.");
+      }
     }
+  }
+
+  private endDiscussion() {
+    const state = this.state!;
+    if (state.phase !== "discussion") return;
+    state.phase = "voting";
+    state.discussionEndsAt = null;
+    state.votes = {};
+    state.voteCandidates = null;
+    this.log("system", "Discussion's over — time to vote.");
   }
 
   private actionSubmitVote(player: Player, targetId: string) {
@@ -537,6 +582,7 @@ export class Room extends DurableObject<Env> {
     state.civilianWord = null;
     state.undercoverWord = null;
     state.category = null;
+    state.discussionEndsAt = null;
     state.winner = null;
     this.log("system", "— New game — back to the lobby.");
   }
@@ -588,6 +634,7 @@ export class Room extends DurableObject<Env> {
       })),
       settings: state.settings,
       turnPlayerId: state.phase === "clue" ? (state.turnOrder[state.turnIndex] ?? null) : null,
+      discussionEndsAt: state.discussionEndsAt,
       clues: state.clues,
       votesInCount: Object.keys(state.votes).length,
       voteEligibleCount: state.players.filter((p) => p.alive).length,

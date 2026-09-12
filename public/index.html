@@ -16,6 +16,11 @@
         <div class="brand-mark">MB</div>
         <h1>Mr. Black</h1>
         <p class="tagline">One of you knows nothing. Everyone else is lying.</p>
+        <p class="home-links">
+          <button id="link-how-to-play" class="link-btn" type="button">How to play</button>
+          <span class="muted">·</span>
+          <button id="link-faq" class="link-btn" type="button">FAQ</button>
+        </p>
       </div>
 
       <div class="card stack">
@@ -76,6 +81,20 @@
             <button data-difficulty="hard" class="pill">Hard</button>
           </div>
         </div>
+        <details class="field disclosure">
+          <summary>Categories <span id="setting-categories-count" class="muted"></span></summary>
+          <div id="setting-categories" class="checkbox-group"></div>
+        </details>
+        <div class="field">
+          <span>Discussion timer</span>
+          <div id="setting-discussion" class="pill-group">
+            <button data-discussion="0" class="pill active">Off</button>
+            <button data-discussion="30" class="pill">30s</button>
+            <button data-discussion="60" class="pill">60s</button>
+            <button data-discussion="90" class="pill">90s</button>
+            <button data-discussion="120" class="pill">120s</button>
+          </div>
+        </div>
         <p id="lobby-hint" class="muted small"></p>
         <button id="lobby-start" class="btn btn-primary">Start round &rarr;</button>
       </div>
@@ -107,6 +126,92 @@
 
       <p id="game-error" class="error-text"></p>
     </section>
+
+    <!-- HOW TO PLAY -->
+    <aside id="modal-how-to-play" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>How to play</h3>
+          <button id="modal-how-to-play-close" class="btn btn-ghost btn-small">Close</button>
+        </div>
+        <div class="modal-body stack">
+          <div class="step">
+            <span class="step-num">1</span>
+            <div>
+              <strong>Roles.</strong> Most of you are Civilians and share a secret word. One or more players are Undercover and get a similar-but-different word. One or more are Mr. Black and get no word at all.
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <div>
+              <strong>Join.</strong> Everyone opens the same link on their own phone or laptop and joins with the room code — no passing a phone around, your role only ever shows on your own screen.
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <div>
+              <strong>Clues.</strong> Taking turns, each player types one short clue about their word into the shared log, so everyone can see who said what.
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">4</span>
+            <div>
+              <strong>Vote.</strong> Talk it over (in person or on a call), then everyone taps to vote at the same time. Whoever gets the most votes is eliminated and their role is revealed.
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">5</span>
+            <div>
+              <strong>Win.</strong> Civilians win by voting out every Undercover and Mr. Black. The impostors win by surviving until they equal the Civilians in number. If Mr. Black is caught, they get one guess at the Civilian word — guess right and the impostors steal the round.
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- FAQ -->
+    <aside id="modal-faq" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>FAQ</h3>
+          <button id="modal-faq-close" class="btn btn-ghost btn-small">Close</button>
+        </div>
+        <div class="modal-body stack">
+          <details class="faq-item">
+            <summary>Do we need an app or an account?</summary>
+            <p>No. Everyone just opens the link in a browser. There's nothing to install and nothing to sign up for.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How many people can play?</summary>
+            <p>Up to 20 in one room. The sweet spot for a fast, tense game is usually 5–10.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do we need to be in the same room?</summary>
+            <p>No — this version is built for playing apart. Hop on a voice call (Discord, FaceTime, whatever) for the talking, and use the app for roles, turns, votes, and the log.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What does Mr. Black do?</summary>
+            <p>Mr. Black gets no word at all and has to bluff a plausible clue every round. If caught, they get one final guess at the Civilian word — guess it and the impostors steal the round.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What's the difference between Undercover and Mr. Black?</summary>
+            <p>Undercover has a real word — just a slightly different one from the Civilians, so they can bluff off actual knowledge. Mr. Black has no word at all and is bluffing completely blind.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is my word visible to anyone else?</summary>
+            <p>No. Your role and word only ever appear on your own device, behind a tap-to-reveal, and are never shown to other players.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What happens if I get disconnected?</summary>
+            <p>Just reopen the link — you'll drop right back into your seat with your role and the game state intact, as long as the room is still active.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is there a database or is anything saved?</summary>
+            <p>No database. Each room's state lives only for the life of that game and is cleared automatically once everyone leaves.</p>
+          </details>
+        </div>
+      </div>
+    </aside>
 
   </div>
 

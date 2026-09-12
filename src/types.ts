@@ -2,7 +2,7 @@ export type Role = "civilian" | "undercover" | "blank";
 
 export type Difficulty = "any" | "easy" | "medium" | "hard";
 
-export type Phase = "lobby" | "clue" | "voting" | "guess" | "gameOver";
+export type Phase = "lobby" | "clue" | "discussion" | "voting" | "guess" | "gameOver";
 
 export interface Player {
   id: string;
@@ -19,6 +19,7 @@ export interface Settings {
   blankCount: number;
   difficulty: Difficulty;
   categories: string[];
+  discussionSeconds: number;
 }
 
 export interface LogEntry {
@@ -54,6 +55,7 @@ export interface RoomState {
   civilianWord: string | null;
   undercoverWord: string | null;
   category: string | null;
+  discussionEndsAt: number | null;
   log: LogEntry[];
   winner: "civilians" | "impostors" | null;
   nextLogId: number;
@@ -91,6 +93,7 @@ export interface ClientView {
   }>;
   settings: Settings;
   turnPlayerId: string | null;
+  discussionEndsAt: number | null;
   clues: { playerId: string; text: string; round: number }[];
   votesInCount: number;
   voteEligibleCount: number;

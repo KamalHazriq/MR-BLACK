@@ -2,6 +2,17 @@
 const SESSION_KEY = "mrblack:session";
 const THEME_KEY = "mrblack:theme";
 
+// Must match src/words.ts CATEGORIES
+const CATEGORIES = [
+  "Food & Drink",
+  "Animals",
+  "Places",
+  "Everyday Objects",
+  "Occupations",
+  "Entertainment & Sports",
+  "Nature",
+];
+
 function effectiveTheme() {
   const explicit = document.documentElement.getAttribute("data-theme");
   if (explicit === "light" || explicit === "dark") return explicit;
@@ -190,6 +201,11 @@ el("home-code").addEventListener("input", (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
 
+el("link-how-to-play").addEventListener("click", () => el("modal-how-to-play").classList.remove("hidden"));
+el("modal-how-to-play-close").addEventListener("click", () => el("modal-how-to-play").classList.add("hidden"));
+el("link-faq").addEventListener("click", () => el("modal-faq").classList.remove("hidden"));
+el("modal-faq-close").addEventListener("click", () => el("modal-faq").classList.add("hidden"));
+
 // ---- Lobby screen ----
 
 el("lobby-code").addEventListener("click", () => {
@@ -224,6 +240,28 @@ document.querySelectorAll("#setting-difficulty .pill").forEach((btn) => {
   btn.addEventListener("click", () => {
     send({ type: "updateSettings", settings: { difficulty: btn.dataset.difficulty } });
   });
+});
+
+document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    send({ type: "updateSettings", settings: { discussionSeconds: Number(btn.dataset.discussion) } });
+  });
+});
+
+// Build the categories checkbox list once; selection is driven by server settings on render.
+el("setting-categories").innerHTML = CATEGORIES.map(
+  (cat) => `<label><input type="checkbox" value="${escapeHtml(cat)}" checked /> ${escapeHtml(cat)}</label>`
+).join("");
+
+el("setting-categories").addEventListener("change", () => {
+  const checked = Array.from(el("setting-categories").querySelectorAll("input:checked")).map((i) => i.value);
+  if (checked.length === 0) {
+    // Selecting none means "all" server-side, which is confusing — keep at least one checked.
+    render(lastView);
+    return;
+  }
+  // Sending every category is equivalent to "all" (no filter) server-side.
+  send({ type: "updateSettings", settings: { categories: checked.length === CATEGORIES.length ? [] : checked } });
 });
 
 el("lobby-start").addEventListener("click", () => {
@@ -279,6 +317,15 @@ function renderLobby(view) {
     document.querySelectorAll("#setting-difficulty .pill").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.difficulty === view.settings.difficulty);
     });
+    document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
+      btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
+    });
+
+    const selectedCategories = view.settings.categories.length === 0 ? CATEGORIES : view.settings.categories;
+    el("setting-categories-count").textContent = `(${selectedCategories.length} selected)`;
+    el("setting-categories").querySelectorAll("input").forEach((input) => {
+      input.checked = selectedCategories.includes(input.value);
+    });
 
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
     const civilians = view.players.length - impostors;
@@ -297,8 +344,9 @@ function renderLobby(view) {
     el("lobby-start").disabled = !canStart;
   } else {
     const impostors = view.settings.undercoverCount + view.settings.blankCount;
+    const timerNote = view.settings.discussionSeconds > 0 ? ` · ${view.settings.discussionSeconds}s discussion timer` : "";
     el("lobby-nonhost-hint").textContent =
-      `Waiting for the host to start — ${view.settings.undercoverCount} Undercover, ${view.settings.blankCount} Mr. Black (${impostors} impostor${impostors === 1 ? "" : "s"} total).`;
+      `Waiting for the host to start — ${view.settings.undercoverCount} Undercover, ${view.settings.blankCount} Mr. Black (${impostors} impostor${impostors === 1 ? "" : "s"} total)${timerNote}.`;
   }
 }
 
@@ -339,13 +387,55 @@ function renderRoster(view) {
     .join("");
 }
 
+let discussionTickInterval = null;
+
 function renderCenterPanel(view) {
   const panel = el("game-center");
+  if (discussionTickInterval) {
+    clearInterval(discussionTickInterval);
+    discussionTickInterval = null;
+  }
   if (view.phase === "clue") return renderCluePhase(panel, view);
+  if (view.phase === "discussion") return renderDiscussionPhase(panel, view);
   if (view.phase === "voting") return renderVotingPhase(panel, view);
   if (view.phase === "guess") return renderGuessPhase(panel, view);
   if (view.phase === "gameOver") return renderGameOver(panel, view);
   panel.innerHTML = "";
+}
+
+function renderDiscussionPhase(panel, view) {
+  const roundClues = view.clues.filter((c) => c.round === view.round);
+  const cluesHtml = roundClues
+    .map((c) => {
+      const p = view.players.find((pp) => pp.id === c.playerId);
+      return `<div class="small muted">${escapeHtml(p?.name || "?")}: "${escapeHtml(c.text)}"</div>`;
+    })
+    .join("");
+
+  panel.innerHTML = `
+    <h2>Talk it over</h2>
+    <div id="discussion-countdown" class="discussion-countdown">--:--</div>
+    <p class="small muted center">Discuss out loud (or in Discord), then voting opens automatically.</p>
+    <div class="stack">${cluesHtml}</div>
+    ${view.you.isHost ? '<button id="discussion-skip" class="btn btn-ghost btn-small">Skip to vote</button>' : ""}
+  `;
+
+  const tick = () => {
+    const remainingMs = view.discussionEndsAt ? view.discussionEndsAt - Date.now() : 0;
+    const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    const node = el("discussion-countdown");
+    if (node) node.textContent = `${mins}:${String(secs).padStart(2, "0")}`;
+    if (remaining <= 0 && discussionTickInterval) {
+      clearInterval(discussionTickInterval);
+      discussionTickInterval = null;
+    }
+  };
+  tick();
+  discussionTickInterval = setInterval(tick, 250);
+
+  el("discussion-skip")?.addEventListener("click", () => send({ type: "skipTurn" }));
 }
 
 function renderCluePhase(panel, view) {
