@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="15" fill="#0F0F0F"/>
+  <!-- fedora crown -->
+  <path d="M21 31V23a7 7 0 0 1 7-7h8a7 7 0 0 1 7 7v8z" fill="#F5F5F5"/>
+  <!-- hat band -->
+  <rect x="21" y="26" width="22" height="5" fill="#0F0F0F"/>
+  <!-- brim -->
+  <rect x="8" y="31" width="48" height="6" rx="3" fill="#F5F5F5"/>
+  <!-- shoulders -->
+  <path d="M14 56c0-9 8-13 18-13s18 4 18 13z" fill="#F5F5F5"/>
+  <!-- collar notch -->
+  <path d="M32 43l5 4-5 9-5-9z" fill="#0F0F0F"/>
+</svg>

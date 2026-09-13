@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Mr. Black</title>
   <meta name="description" content="Mr. Black — the online social deduction word game. One of you knows nothing." />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&display=swap" />
@@ -19,7 +21,10 @@
     <!-- HOME -->
     <section id="screen-home" class="screen">
       <header class="page-head">
-        <p class="eyebrow">Mr. Black</p>
+        <div class="brand-lockup">
+          <img src="/favicon.svg" alt="" class="brand-mark" width="28" height="28" />
+          <span class="eyebrow">Mr. Black</span>
+        </div>
         <h1 class="display">One of you<br />is lying.</h1>
         <p class="lede">The social deduction word game — everyone gets a word, except one of you. Play with up to 20 friends, each on your own phone.</p>
       </header>
@@ -47,6 +52,7 @@
         <span aria-hidden="true">·</span>
         <button id="link-faq" class="link-btn" type="button">FAQ</button>
       </nav>
+      <p class="credit">Made by Kamal Hazriq · Inspired by the Mr White party game</p>
     </section>
 
     <!-- LOBBY -->
@@ -55,7 +61,10 @@
         <div>
           <p class="eyebrow">Room code</p>
           <button id="lobby-code" class="display display-code" title="Tap to copy">-----</button>
-          <p class="meta">Tap the code to copy it, then send it to your friends.</p>
+          <div class="invite-row">
+            <button id="lobby-copy-link" class="btn btn-ghost btn-small" type="button">Copy invite link</button>
+            <span id="lobby-copy-status" class="meta"></span>
+          </div>
         </div>
         <button id="lobby-leave" class="btn btn-ghost btn-small">Leave</button>
       </header>
@@ -121,6 +130,7 @@
             <p id="wordmode-hint" class="meta"></p>
 
             <div id="words-builtin-block">
+              <div id="setting-category-chips" class="category-chips"></div>
               <div id="setting-words-categories" class="word-categories"></div>
             </div>
 
@@ -164,7 +174,10 @@
     <section id="screen-game" class="screen">
       <header class="game-head">
         <span id="game-round" class="eyebrow"></span>
-        <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
+        <div class="game-head-actions">
+          <button id="sound-toggle" class="btn btn-ghost btn-small" type="button" aria-label="Toggle turn sound">Sound on</button>
+          <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
+        </div>
       </header>
 
       <button id="game-role-badge" class="role-badge role-hidden">

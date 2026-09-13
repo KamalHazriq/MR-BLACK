@@ -333,6 +333,29 @@ input[type="text"]:focus { border-color: var(--text); }
 
 .pill-group-tight { margin-top: 0; margin-bottom: 12px; }
 #words-builtin-block.hidden + .divider-line { display: none; }
+
+.category-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.cat-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 13px; border: none; border-radius: var(--r-pill);
+  background: transparent; box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted); font-family: inherit; font-size: 0.82rem; font-weight: 500;
+  cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+}
+.cat-chip.active { background: var(--inverse-bg); color: var(--inverse-text); box-shadow: none; }
+.cat-chip.partial { box-shadow: inset 0 0 0 1px var(--muted); }
+.cat-chip-count { font-family: var(--font-mono); font-size: 0.68rem; opacity: 0.6; }
+
+.brand-lockup { display: flex; align-items: center; gap: 9px; }
+.brand-mark { display: block; border-radius: 7px; }
+
+.invite-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.game-head-actions { display: flex; gap: 8px; }
+
+.credit {
+  margin: 10px 0 0; text-align: center;
+  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em; color: var(--faint);
+}
 .word-pair-list { display: flex; flex-direction: column; }
 .word-pair-item {
   display: flex; align-items: center; gap: 10px;

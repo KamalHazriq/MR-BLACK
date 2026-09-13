@@ -84,6 +84,90 @@ let hasRevealedRole = false;
 let reconnectAttempts = 0;
 let intentionalClose = false;
 
+// ---- Turn sound ----
+
+const SOUND_KEY = "mrblack:sound";
+let soundOn = true;
+let audioCtx = null;
+
+try {
+  soundOn = localStorage.getItem(SOUND_KEY) !== "off";
+} catch {
+  // keep the default
+}
+
+function renderSoundToggle() {
+  const btn = el("sound-toggle");
+  if (btn) btn.textContent = soundOn ? "Sound on" : "Sound off";
+}
+
+function playTurnChime() {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const start = audioCtx.currentTime;
+    [880, 1318.5].forEach((freq, i) => {
+      const at = start + i * 0.13;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.2, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(at);
+      osc.stop(at + 0.32);
+    });
+  } catch {
+    // audio is a nicety; never let it break the game
+  }
+  try {
+    navigator.vibrate?.(180);
+  } catch {
+    // ignore
+  }
+}
+
+el("sound-toggle").addEventListener("click", () => {
+  soundOn = !soundOn;
+  try {
+    localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+  } catch {
+    // ignore
+  }
+  renderSoundToggle();
+  if (soundOn) playTurnChime();
+});
+renderSoundToggle();
+
+// ---- Invite link ----
+
+function inviteUrl(code) {
+  return `${location.origin}/?room=${encodeURIComponent(code)}`;
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+el("lobby-copy-link").addEventListener("click", async () => {
+  if (!lastView) return;
+  const ok = await copyText(inviteUrl(lastView.code));
+  const status = el("lobby-copy-status");
+  status.textContent = ok ? "Link copied" : inviteUrl(lastView.code);
+  setTimeout(() => {
+    if (status.textContent === "Link copied") status.textContent = "";
+  }, 2500);
+});
+
 // ---- Word pairs picker ----
 
 let allWordPairs = [];
@@ -106,6 +190,13 @@ async function loadWordPairs() {
 }
 
 function buildWordsPickerDom() {
+  el("setting-category-chips").innerHTML = Array.from(wordPairsByCategory.entries())
+    .map(
+      ([category, pairs]) =>
+        `<button type="button" class="cat-chip" data-category="${escapeHtml(category)}">${escapeHtml(category)} <span class="cat-chip-count">${pairs.length}</span></button>`
+    )
+    .join("");
+
   const container = el("setting-words-categories");
   container.innerHTML = Array.from(wordPairsByCategory.entries())
     .map(([category, pairs]) => {
@@ -120,11 +211,10 @@ function buildWordsPickerDom() {
         )
         .join("");
       return `
-        <details class="word-category">
+        <details class="word-category" data-category-panel="${escapeHtml(category)}">
           <summary>
-            <input type="checkbox" data-category-toggle="${escapeHtml(category)}" checked />
             <span class="word-category-name">${escapeHtml(category)}</span>
-            <span class="muted">${pairs.length}</span>
+            <span class="muted"><span data-category-on="${escapeHtml(category)}">0</span>/${pairs.length}</span>
           </summary>
           <div class="word-pair-list">${items}</div>
         </details>`;
@@ -135,25 +225,33 @@ function buildWordsPickerDom() {
     input.addEventListener("change", sendDisabledPairsUpdate);
   });
 
-  container.querySelectorAll("input[data-category-toggle]").forEach((input) => {
-    // Keep the click from reaching <summary>, which would open/close the section.
-    input.addEventListener("click", (e) => e.stopPropagation());
-    input.addEventListener("change", () => {
-      setCategoryChecked(input.dataset.categoryToggle, input.checked);
+  el("setting-category-chips").querySelectorAll("[data-category]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const on = chip.classList.contains("active");
+      setCategoryChecked(chip.dataset.category, !on);
       sendDisabledPairsUpdate();
     });
   });
 }
 
-function syncCategoryToggles() {
-  el("setting-words-categories").querySelectorAll("input[data-category-toggle]").forEach((input) => {
-    const pairs = wordPairsByCategory.get(input.dataset.categoryToggle) || [];
-    const boxes = pairs
-      .map((p) => el("setting-words-categories").querySelector(`input[data-pair-id="${p.id}"]`))
-      .filter(Boolean);
-    const on = boxes.filter((b) => b.checked).length;
-    input.checked = on > 0;
-    input.indeterminate = on > 0 && on < boxes.length;
+// A category counts as "picked" when at least one of its pairs is still in.
+function syncCategoryChips() {
+  const container = el("setting-words-categories");
+  el("setting-category-chips").querySelectorAll("[data-category]").forEach((chip) => {
+    const category = chip.dataset.category;
+    const pairs = wordPairsByCategory.get(category) || [];
+    const on = pairs.filter((p) => {
+      const box = container.querySelector(`input[data-pair-id="${p.id}"]`);
+      return box && box.checked;
+    }).length;
+
+    chip.classList.toggle("active", on > 0);
+    chip.classList.toggle("partial", on > 0 && on < pairs.length);
+
+    const panel = container.querySelector(`[data-category-panel="${CSS.escape(category)}"]`);
+    if (panel) panel.classList.toggle("hidden", on === 0);
+    const counter = container.querySelector(`[data-category-on="${CSS.escape(category)}"]`);
+    if (counter) counter.textContent = String(on);
   });
 }
 
@@ -164,11 +262,41 @@ function setCategoryChecked(category, checked) {
   });
 }
 
+// The picker is optimistic: the DOM changes immediately and the server echo
+// arrives a round-trip later. Debounce the send and ignore echoes for a beat
+// afterwards, so a quick burst of taps doesn't get reverted by a stale one.
+let wordEditTimer = null;
+let wordEditUntil = 0;
+
+function localWordEditInFlight() {
+  return Date.now() < wordEditUntil;
+}
+
 function sendDisabledPairsUpdate() {
-  const disabledPairs = Array.from(el("setting-words-categories").querySelectorAll("input[data-pair-id]"))
-    .filter((i) => !i.checked)
-    .map((i) => i.dataset.pairId);
-  send({ type: "updateSettings", settings: { disabledPairs } });
+  wordEditUntil = Date.now() + 1200;
+  syncCategoryChips();
+  updateWordCountLabel();
+  clearTimeout(wordEditTimer);
+  wordEditTimer = setTimeout(() => {
+    const disabledPairs = Array.from(el("setting-words-categories").querySelectorAll("input[data-pair-id]"))
+      .filter((i) => !i.checked)
+      .map((i) => i.dataset.pairId);
+    wordEditUntil = Date.now() + 1200;
+    send({ type: "updateSettings", settings: { disabledPairs } });
+  }, 200);
+}
+
+function updateWordCountLabel() {
+  if (!lastView) return;
+  const mode = lastView.settings.wordMode;
+  const custom = lastView.settings.customPairs.length;
+  const builtinOn =
+    mode === "custom"
+      ? 0
+      : mode === "all"
+        ? allWordPairs.length
+        : el("setting-words-categories").querySelectorAll("input[data-pair-id]:checked").length;
+  el("setting-words-count").textContent = `${builtinOn + custom} in play`;
 }
 
 document.querySelectorAll("#setting-wordmode .pill").forEach((btn) => {
@@ -188,19 +316,23 @@ function renderWordMode(view) {
   });
   el("words-builtin-block").classList.toggle("hidden", mode !== "pick");
 
-  if (allWordPairs.length > 0) {
+  if (allWordPairs.length > 0 && !localWordEditInFlight()) {
     const disabledSet = new Set(view.settings.disabledPairs);
     el("setting-words-categories").querySelectorAll("input[data-pair-id]").forEach((input) => {
       input.checked = !disabledSet.has(input.dataset.pairId);
     });
-    syncCategoryToggles();
+    syncCategoryChips();
   }
 
   const builtinInPlay =
     mode === "custom" ? 0 : mode === "all" ? allWordPairs.length : allWordPairs.length - view.settings.disabledPairs.length;
   const total = builtinInPlay + custom;
 
-  el("setting-words-count").textContent = `${total} in play`;
+  if (localWordEditInFlight()) {
+    updateWordCountLabel();
+  } else {
+    el("setting-words-count").textContent = `${total} in play`;
+  }
   el("wordmode-hint").textContent =
     mode === "all"
       ? `Every built-in pair is in the draw${custom ? `, plus your ${custom}` : ""}.`
@@ -425,7 +557,21 @@ el("game-log-close").addEventListener("click", () => {
 
 // ---- Rendering ----
 
+let lastTurnPlayerId = null;
+let lastGuessPlayerId = null;
+
+function maybeChime(view) {
+  const myTurn = view.phase === "clue" && view.turnPlayerId === view.you.id;
+  if (myTurn && lastTurnPlayerId !== view.you.id) playTurnChime();
+  lastTurnPlayerId = view.phase === "clue" ? view.turnPlayerId : null;
+
+  const myGuess = view.phase === "guess" && view.isYourGuess;
+  if (myGuess && lastGuessPlayerId !== view.you.id) playTurnChime();
+  lastGuessPlayerId = view.phase === "guess" ? view.pendingGuessPlayerId : null;
+}
+
 function render(view) {
+  maybeChime(view);
   if (view.phase === "lobby") {
     hasRevealedRole = false;
     renderLobby(view);
@@ -736,7 +882,16 @@ function renderLog(view) {
   if (session) {
     showScreen("lobby");
     connect(session);
-  } else {
-    showScreen("home");
+    return;
+  }
+
+  showScreen("home");
+
+  // Invite links land here as /?room=CODE — prefill the code so all they type is a name.
+  const invited = new URLSearchParams(location.search).get("room");
+  if (invited) {
+    el("home-code").value = invited.toUpperCase().slice(0, 6);
+    el("home-error").textContent = "Room code filled in — add your name to join.";
+    el("home-name").focus();
   }
 })();
