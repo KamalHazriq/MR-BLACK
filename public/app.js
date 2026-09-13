@@ -244,6 +244,9 @@ async function loadWordPairs() {
       wordPairsByCategory.get(p.category).push(p);
     }
     buildWordsPickerDom();
+    // Keep the landing-page stats honest as the bank grows.
+    el("stat-pairs").textContent = String(allWordPairs.length);
+    el("stat-categories").textContent = String(wordPairsByCategory.size);
     if (lastView && lastView.phase === "lobby") renderLobby(lastView);
   } catch {
     // Picker just stays empty if this fails; game still works with the full default word bank.
@@ -448,6 +451,7 @@ el("custom-add").addEventListener("click", addCustomPair);
 let adminPin = null;
 let adminPairs = [];
 let adminCategories = [];
+let adminEditingId = null;
 
 async function adminCall(op, payload = {}) {
   const res = await fetch("/api/admin", {
@@ -531,19 +535,43 @@ function renderAdmin() {
   });
 
   el("admin-count").textContent = `${shown.length} of ${adminPairs.length}`;
+  const categoryOptions = (selected) =>
+    adminCategories
+      .map((c) => `<option value="${escapeHtml(c)}"${c === selected ? " selected" : ""}>${escapeHtml(c)}</option>`)
+      .join("");
+
   el("admin-list").innerHTML = shown
     .slice(0, 300)
-    .map(
-      (p) => `
-      <div class="admin-row" data-id="${escapeHtml(p.id)}">
-        <div class="admin-row-main">
-          <span>${escapeHtml(p.civilian)} / ${escapeHtml(p.undercover)}</span>
-          <span class="admin-row-meta">${escapeHtml(p.category)} · ${escapeHtml(p.difficulty)}${p.builtin ? "" : " · custom"}</span>
-        </div>
-        <button data-edit="${escapeHtml(p.id)}">Edit</button>
-        <button class="danger" data-delete="${escapeHtml(p.id)}">Delete</button>
-      </div>`
-    )
+    .map((p) => {
+      if (p.id === adminEditingId) {
+        return `
+          <div class="admin-row admin-row-editing" data-id="${escapeHtml(p.id)}">
+            <div class="admin-edit-grid">
+              <input class="admin-edit-civilian" type="text" maxlength="40" value="${escapeHtml(p.civilian)}" />
+              <input class="admin-edit-undercover" type="text" maxlength="40" value="${escapeHtml(p.undercover)}" />
+              <select class="admin-select admin-edit-category">${categoryOptions(p.category)}</select>
+              <select class="admin-select admin-edit-difficulty">
+                <option value="easy"${p.difficulty === "easy" ? " selected" : ""}>Easy</option>
+                <option value="medium"${p.difficulty === "medium" ? " selected" : ""}>Medium</option>
+                <option value="hard"${p.difficulty === "hard" ? " selected" : ""}>Hard</option>
+              </select>
+              <div class="admin-edit-actions">
+                <button data-save="${escapeHtml(p.id)}">Save</button>
+                <button data-cancel-edit>Cancel</button>
+              </div>
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="admin-row" data-id="${escapeHtml(p.id)}">
+          <div class="admin-row-main">
+            <span>${escapeHtml(p.civilian)} / ${escapeHtml(p.undercover)}</span>
+            <span class="admin-row-meta">${escapeHtml(p.category)} · ${escapeHtml(p.difficulty)}${p.builtin ? "" : " · custom"}</span>
+          </div>
+          <button data-edit="${escapeHtml(p.id)}">Edit</button>
+          <button class="danger" data-delete="${escapeHtml(p.id)}">Delete</button>
+        </div>`;
+    })
     .join("");
 }
 
@@ -593,6 +621,9 @@ el("admin-categories").addEventListener("click", async (e) => {
 el("admin-list").addEventListener("click", async (e) => {
   const editBtn = e.target.closest("[data-edit]");
   const delBtn = e.target.closest("[data-delete]");
+  const saveBtn = e.target.closest("[data-save]");
+  const cancelBtn = e.target.closest("[data-cancel-edit]");
+
   try {
     if (delBtn) {
       const pair = adminPairs.find((p) => p.id === delBtn.dataset.delete);
@@ -602,20 +633,43 @@ el("admin-list").addEventListener("click", async (e) => {
       return;
     }
     if (editBtn) {
-      const pair = adminPairs.find((p) => p.id === editBtn.dataset.edit);
-      if (!pair) return;
-      const civilian = prompt("Civilian word", pair.civilian);
-      if (civilian === null) return;
-      const undercover = prompt("Undercover word", pair.undercover);
-      if (undercover === null) return;
-      const category = prompt("Category", pair.category);
-      if (category === null) return;
-      const difficulty = prompt("Difficulty (easy / medium / hard)", pair.difficulty);
-      if (difficulty === null) return;
-      await adminCall("updatePair", { id: pair.id, civilian, undercover, category, difficulty });
+      adminEditingId = editBtn.dataset.edit;
+      renderAdmin();
+      el("admin-list").querySelector(".admin-edit-civilian")?.focus();
+      return;
+    }
+    if (cancelBtn) {
+      adminEditingId = null;
+      renderAdmin();
+      return;
+    }
+    if (saveBtn) {
+      const row = saveBtn.closest(".admin-row");
+      const id = saveBtn.dataset.save;
+      const payload = {
+        id,
+        civilian: row.querySelector(".admin-edit-civilian").value,
+        undercover: row.querySelector(".admin-edit-undercover").value,
+        category: row.querySelector(".admin-edit-category").value,
+        difficulty: row.querySelector(".admin-edit-difficulty").value,
+      };
+      adminEditingId = null;
+      await adminCall("updatePair", payload);
     }
   } catch (err) {
     adminError(err);
+  }
+});
+
+// Enter saves, Escape cancels while editing a row
+el("admin-list").addEventListener("keydown", (e) => {
+  if (!adminEditingId) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.target.closest(".admin-row")?.querySelector("[data-save]")?.click();
+  } else if (e.key === "Escape") {
+    adminEditingId = null;
+    renderAdmin();
   }
 });
 
@@ -782,6 +836,12 @@ document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("#setting-vote .pill").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    send({ type: "updateSettings", settings: { voteSeconds: Number(btn.dataset.voteSeconds) } });
+  });
+});
+
 el("lobby-start").addEventListener("click", () => {
   send({ type: "startGame" });
 });
@@ -845,6 +905,9 @@ function renderLobby(view) {
   });
   document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
     btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
+  });
+  document.querySelectorAll("#setting-vote .pill").forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.voteSeconds) === view.settings.voteSeconds);
   });
 
   renderCustomPairs(view.settings.customPairs);
@@ -915,13 +978,18 @@ function renderPlayers(view) {
       if (!p.alive) classes.push("dead");
 
       const you = p.id === view.you.id ? ' <span class="play-you">you</span>' : "";
+      const votes = view.lastVoteCounts?.[p.id];
+      const voteTag = votes ? `<span class="play-votes">${votes} vote${votes === 1 ? "" : "s"}</span>` : "";
+      const lockedTag =
+        view.phase === "voting" && view.lockedPlayerIds.includes(p.id)
+          ? '<span class="play-role">locked in</span>'
+          : "";
       const role = revealed[p.id]
         ? `<span class="play-role">${escapeHtml(roleLabel(revealed[p.id]))}</span>`
         : p.id === view.turnPlayerId
           ? '<span class="play-role play-turn">their turn</span>'
-          : !p.connected
-            ? '<span class="play-role">away</span>'
-            : "";
+          : lockedTag ||
+            (!p.connected ? '<span class="play-role">away</span>' : "");
 
       const clues = view.clues
         .filter((c) => c.playerId === p.id)
@@ -934,7 +1002,7 @@ function renderPlayers(view) {
       return `
         <div class="${classes.join(" ")}">
           <div class="play-row-head">
-            <span class="play-name">${escapeHtml(p.name)}${you}</span>
+            <span class="play-name">${escapeHtml(p.name)}${you}${voteTag}</span>
             ${role}
           </div>
           ${clues ? `<ol class="play-clues">${clues}</ol>` : '<p class="play-empty">No clue yet</p>'}
@@ -944,12 +1012,17 @@ function renderPlayers(view) {
 }
 
 let discussionTickInterval = null;
+let voteTickInterval = null;
 
 function renderCenterPanel(view) {
   const panel = el("game-center");
   if (discussionTickInterval) {
     clearInterval(discussionTickInterval);
     discussionTickInterval = null;
+  }
+  if (voteTickInterval) {
+    clearInterval(voteTickInterval);
+    voteTickInterval = null;
   }
   if (view.phase === "clue") return renderCluePhase(panel, view);
   if (view.phase === "discussion") return renderDiscussionPhase(panel, view);
@@ -1025,9 +1098,33 @@ function renderCluePhase(panel, view) {
   el("clue-skip")?.addEventListener("click", () => send({ type: "skipTurn" }));
 }
 
+function voteStatusHtml(view) {
+  const clock = view.voteEndsAt ? '<span id="vote-countdown" class="vote-clock">--:--</span>' : "";
+  return `<p class="meta vote-status">${view.lockedPlayerIds.length}/${view.voteEligibleCount} locked in ${clock}</p>`;
+}
+
+function startVoteCountdown(view) {
+  if (!view.voteEndsAt) return;
+  const tick = () => {
+    const left = Math.max(0, Math.ceil((view.voteEndsAt - Date.now()) / 1000));
+    const node = el("vote-countdown");
+    if (node) {
+      node.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+      node.classList.toggle("urgent", left <= 5);
+    }
+    if (left <= 0 && voteTickInterval) {
+      clearInterval(voteTickInterval);
+      voteTickInterval = null;
+    }
+  };
+  tick();
+  voteTickInterval = setInterval(tick, 250);
+}
+
 function renderVotingPhase(panel, view) {
   if (!view.you.alive) {
-    panel.innerHTML = `<h2>Voting</h2><p>You've been eliminated — watch how it plays out.</p><p class="meta">${view.votesInCount}/${view.voteEligibleCount} voted</p>`;
+    panel.innerHTML = `<h2>Voting</h2><p>You've been eliminated — watch how it plays out.</p>${voteStatusHtml(view)}`;
+    startVoteCountdown(view);
     return;
   }
 
@@ -1036,26 +1133,36 @@ function renderVotingPhase(panel, view) {
     : view.players.filter((p) => p.alive && p.id !== view.you.id);
 
   const tieNote = view.voteCandidates ? `<p class="meta">Revote — pick between the tied players.</p>` : "";
+  const locked = view.yourVoteLocked;
+  const chosen = view.players.find((p) => p.id === view.yourVoteTargetId);
 
   panel.innerHTML = `
-    <h2>Who's suspicious?</h2>
+    <h2>${locked ? "Vote locked" : "Who's suspicious?"}</h2>
     ${tieNote}
-    <div class="vote-grid">
-      ${candidates
-        .map((p) => {
-          const selected = view.yourVoteTargetId === p.id ? "selected" : "";
-          return `<button class="vote-btn ${selected}" data-vote="${p.id}">${escapeHtml(p.name)}</button>`;
-        })
-        .join("")}
-    </div>
-    <p class="meta">${view.votesInCount}/${view.voteEligibleCount} voted</p>
+    ${
+      locked
+        ? `<p>You voted for <strong>${escapeHtml(chosen?.name || "?")}</strong>. Waiting for the rest…</p>`
+        : `<div class="vote-grid">
+            ${candidates
+              .map((p) => {
+                const sel = view.yourVoteTargetId === p.id ? "selected" : "";
+                const lockedTag = view.lockedPlayerIds.includes(p.id) ? '<span class="vote-locked-tag">locked in</span>' : "";
+                return `<button class="vote-btn ${sel}" data-vote="${p.id}">${escapeHtml(p.name)}${lockedTag}</button>`;
+              })
+              .join("")}
+          </div>
+          <button id="vote-lock" class="btn btn-primary btn-block" ${view.yourVoteTargetId ? "" : "disabled"}>
+            ${view.yourVoteTargetId ? `Lock in ${escapeHtml(chosen?.name || "")}` : "Pick someone first"}
+          </button>`
+    }
+    ${voteStatusHtml(view)}
   `;
 
   panel.querySelectorAll("[data-vote]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      send({ type: "submitVote", targetId: btn.dataset.vote });
-    });
+    btn.addEventListener("click", () => send({ type: "submitVote", targetId: btn.dataset.vote }));
   });
+  el("vote-lock")?.addEventListener("click", () => send({ type: "lockVote" }));
+  startVoteCountdown(view);
 }
 
 function renderGuessPhase(panel, view) {

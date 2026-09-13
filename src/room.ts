@@ -133,6 +133,7 @@ export class Room extends DurableObject<Env> {
         blankCount: 1,
         difficulty: "any",
         discussionSeconds: 0,
+        voteSeconds: 0,
         wordMode: "all",
         disabledPairs: [],
         customPairs: [],
@@ -142,6 +143,9 @@ export class Room extends DurableObject<Env> {
       turnIndex: 0,
       clues: [],
       votes: {},
+      lockedVotes: [],
+      voteEndsAt: null,
+      lastVoteCounts: null,
       voteCandidates: null,
       revoteCount: 0,
       pendingGuessPlayerId: null,
@@ -231,8 +235,13 @@ export class Room extends DurableObject<Env> {
   // opportunistically whenever a player connects or sends a message.
   private checkDiscussionExpiry(): void {
     const state = this.state;
-    if (state && state.phase === "discussion" && state.discussionEndsAt !== null && Date.now() >= state.discussionEndsAt) {
+    if (!state) return;
+    if (state.phase === "discussion" && state.discussionEndsAt !== null && Date.now() >= state.discussionEndsAt) {
       this.endDiscussion();
+    }
+    // Whatever has been picked when the clock runs out is what counts, locked or not.
+    if (state.phase === "voting" && state.voteEndsAt !== null && Date.now() >= state.voteEndsAt) {
+      this.tallyVotes();
     }
   }
 
@@ -265,6 +274,9 @@ export class Room extends DurableObject<Env> {
           break;
         case "submitVote":
           this.actionSubmitVote(player, msg.targetId);
+          break;
+        case "lockVote":
+          this.actionLockVote(player);
           break;
         case "submitGuess":
           this.actionSubmitGuess(player, msg.word);
@@ -314,6 +326,12 @@ export class Room extends DurableObject<Env> {
       this.broadcast();
     }
 
+    if (this.state.phase === "voting" && this.state.voteEndsAt !== null && Date.now() >= this.state.voteEndsAt - 250) {
+      this.tallyVotes();
+      await this.persist();
+      this.broadcast();
+    }
+
     if (this.ctx.getWebSockets().length === 0) {
       await this.ctx.storage.deleteAll();
       this.state = null;
@@ -340,6 +358,9 @@ export class Room extends DurableObject<Env> {
     if (partial.difficulty) state.settings.difficulty = partial.difficulty;
     if (typeof partial.discussionSeconds === "number") {
       state.settings.discussionSeconds = Math.max(0, Math.min(300, Math.round(partial.discussionSeconds)));
+    }
+    if (typeof partial.voteSeconds === "number") {
+      state.settings.voteSeconds = Math.max(0, Math.min(300, Math.round(partial.voteSeconds)));
     }
     if (partial.wordMode && ["all", "pick", "custom"].includes(partial.wordMode)) {
       state.settings.wordMode = partial.wordMode;
@@ -416,6 +437,8 @@ export class Room extends DurableObject<Env> {
     state.turnIndex = 0;
     state.phase = "clue";
     state.discussionEndsAt = null;
+    state.voteEndsAt = null;
+    state.lockedVotes = [];
     this.log("roundStart", `Round ${state.round} begins.`);
   }
 
@@ -455,28 +478,40 @@ export class Room extends DurableObject<Env> {
         this.ctx.storage.setAlarm(state.discussionEndsAt);
         this.log("system", "Clues are in — talk it over before voting.");
       } else {
-        state.phase = "voting";
-        state.votes = {};
-        state.voteCandidates = null;
-        this.log("system", "Clue round complete — time to vote.");
+        this.openVoting("Clue round complete — time to vote.");
       }
     }
+  }
+
+  private openVoting(message: string, candidates: string[] | null = null) {
+    const state = this.state!;
+    state.phase = "voting";
+    state.discussionEndsAt = null;
+    state.votes = {};
+    state.lockedVotes = [];
+    state.lastVoteCounts = null;
+    state.voteCandidates = candidates;
+    if (state.settings.voteSeconds > 0) {
+      state.voteEndsAt = Date.now() + state.settings.voteSeconds * 1000;
+      this.ctx.storage.setAlarm(state.voteEndsAt);
+    } else {
+      state.voteEndsAt = null;
+    }
+    this.log("system", message);
   }
 
   private endDiscussion() {
     const state = this.state!;
     if (state.phase !== "discussion") return;
-    state.phase = "voting";
-    state.discussionEndsAt = null;
-    state.votes = {};
-    state.voteCandidates = null;
-    this.log("system", "Discussion's over — time to vote.");
+    this.openVoting("Discussion's over — time to vote.");
   }
 
+  // Picking is free until you lock it in; the tally waits for every lock.
   private actionSubmitVote(player: Player, targetId: string) {
     const state = this.state!;
     if (state.phase !== "voting") throw new Error("Not voting time");
     if (!player.alive) throw new Error("Eliminated players cannot vote");
+    if (state.lockedVotes.includes(player.id)) throw new Error("Your vote is already locked in");
     if (targetId === player.id) throw new Error("You cannot vote for yourself");
     const target = state.players.find((p) => p.id === targetId);
     if (!target || !target.alive) throw new Error("Invalid vote target");
@@ -484,18 +519,37 @@ export class Room extends DurableObject<Env> {
       throw new Error("That player is not up for the revote");
     }
     state.votes[player.id] = targetId;
+  }
 
+  private actionLockVote(player: Player) {
+    const state = this.state!;
+    if (state.phase !== "voting") throw new Error("Not voting time");
+    if (!player.alive) throw new Error("Eliminated players cannot vote");
+    if (!state.votes[player.id]) throw new Error("Pick someone first");
+    if (state.lockedVotes.includes(player.id)) return;
+
+    state.lockedVotes.push(player.id);
     const aliveIds = state.players.filter((p) => p.alive).map((p) => p.id);
-    const allVoted = aliveIds.every((id) => state.votes[id]);
-    if (allVoted) this.tallyVotes();
+    if (aliveIds.every((id) => state.lockedVotes.includes(id))) this.tallyVotes();
   }
 
   private tallyVotes() {
     const state = this.state!;
+    state.voteEndsAt = null;
+
     const counts = new Map<string, number>();
     for (const targetId of Object.values(state.votes)) {
       counts.set(targetId, (counts.get(targetId) ?? 0) + 1);
     }
+    state.lastVoteCounts = Object.fromEntries(counts);
+
+    // Only reachable when a vote timer runs out with nobody having picked.
+    if (counts.size === 0) {
+      this.log("system", "Nobody voted — no one is eliminated.");
+      this.startNextRound();
+      return;
+    }
+
     let max = 0;
     for (const c of counts.values()) max = Math.max(max, c);
     const top = [...counts.entries()].filter(([, c]) => c === max).map(([id]) => id);
@@ -511,9 +565,7 @@ export class Room extends DurableObject<Env> {
       .join(" and ");
     if (state.revoteCount < 1) {
       state.revoteCount += 1;
-      state.voteCandidates = top;
-      state.votes = {};
-      this.log("tie", `Tie between ${names} — revote!`);
+      this.openVoting(`Tie between ${names} — revote!`, top);
     } else {
       const chosen = top[Math.floor(Math.random() * top.length)];
       this.log("tie", `Still tied between ${names} — drawing lots...`);
@@ -528,6 +580,8 @@ export class Room extends DurableObject<Env> {
     target.alive = false;
     this.log("eliminate", `${target.name} was voted out. They were ${roleLabel(target.role)}.`);
     state.votes = {};
+    state.lockedVotes = [];
+    state.voteEndsAt = null;
     state.voteCandidates = null;
 
     if (target.role === "blank") {
@@ -606,6 +660,9 @@ export class Room extends DurableObject<Env> {
     state.turnIndex = 0;
     state.clues = [];
     state.votes = {};
+    state.lockedVotes = [];
+    state.voteEndsAt = null;
+    state.lastVoteCounts = null;
     state.voteCandidates = null;
     state.revoteCount = 0;
     state.pendingGuessPlayerId = null;
@@ -669,6 +726,10 @@ export class Room extends DurableObject<Env> {
       votesInCount: Object.keys(state.votes).length,
       voteEligibleCount: state.players.filter((p) => p.alive).length,
       yourVoteTargetId: state.votes[playerId] ?? null,
+      yourVoteLocked: state.lockedVotes.includes(playerId),
+      lockedPlayerIds: state.lockedVotes,
+      voteEndsAt: state.voteEndsAt,
+      lastVoteCounts: state.lastVoteCounts,
       voteCandidates: state.voteCandidates,
       pendingGuessPlayerId: state.pendingGuessPlayerId,
       isYourGuess: state.pendingGuessPlayerId === playerId,

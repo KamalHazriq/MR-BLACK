@@ -76,8 +76,8 @@
       <section class="band stats-band">
         <div class="wrap stats">
           <div class="stat"><span class="stat-num">20</span><span class="stat-label">Players max</span></div>
-          <div class="stat"><span class="stat-num">23</span><span class="stat-label">Categories</span></div>
-          <div class="stat"><span class="stat-num">576</span><span class="stat-label">Word pairs</span></div>
+          <div class="stat"><span class="stat-num" id="stat-categories">—</span><span class="stat-label">Categories</span></div>
+          <div class="stat"><span class="stat-num" id="stat-pairs">—</span><span class="stat-label">Word pairs</span></div>
           <div class="stat"><span class="stat-num">~10s</span><span class="stat-label">To start a round</span></div>
         </div>
       </section>
@@ -304,6 +304,19 @@
             <button data-discussion="60" class="pill">60s</button>
             <button data-discussion="90" class="pill">90s</button>
             <button data-discussion="120" class="pill">120s</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="section-label">Vote timer</span>
+          </div>
+          <p class="meta">Time limit to lock in a vote. Whatever is picked when it hits zero counts.</p>
+          <div id="setting-vote" class="pill-group">
+            <button data-vote-seconds="0" class="pill active">Off</button>
+            <button data-vote-seconds="15" class="pill">15s</button>
+            <button data-vote-seconds="30" class="pill">30s</button>
+            <button data-vote-seconds="60" class="pill">60s</button>
           </div>
         </div>
 

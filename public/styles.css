@@ -483,6 +483,26 @@ body:has(#screen-landing.active) .theme-toggle-fixed { display: none; }
 }
 .vote-btn.selected { background: var(--inverse-bg); color: var(--inverse-text); box-shadow: none; }
 .vote-btn:disabled { opacity: 0.4; cursor: default; }
+.vote-locked-tag {
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.06em;
+  text-transform: uppercase; opacity: 0.65;
+}
+.vote-status { display: flex; align-items: center; gap: 10px; }
+.vote-clock {
+  font-family: var(--font-mono); font-size: 0.95rem; font-weight: 500;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.vote-clock.urgent { color: var(--accent); }
+.play-votes {
+  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--accent); margin-left: 7px;
+}
+
+.admin-row-editing { padding: 12px 0; }
+.admin-edit-grid { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.admin-edit-grid input { height: 38px; flex: 1 1 130px; min-width: 0; font-size: 0.88rem; }
+.admin-edit-grid .admin-select { height: 38px; flex: 1 1 110px; }
+.admin-edit-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
 
 .discussion-countdown {
   font-family: var(--font-mono); font-size: 3rem; font-weight: 500;

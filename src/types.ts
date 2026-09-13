@@ -28,6 +28,7 @@ export interface Settings {
   blankCount: number;
   difficulty: Difficulty;
   discussionSeconds: number;
+  voteSeconds: number;
   wordMode: WordMode;
   disabledPairs: string[];
   customPairs: CustomPair[];
@@ -60,6 +61,9 @@ export interface RoomState {
   turnIndex: number;
   clues: { playerId: string; text: string; round: number }[];
   votes: Record<string, string>;
+  lockedVotes: string[];
+  voteEndsAt: number | null;
+  lastVoteCounts: Record<string, number> | null;
   voteCandidates: string[] | null;
   revoteCount: number;
   pendingGuessPlayerId: string | null;
@@ -78,6 +82,7 @@ export type ClientMessage =
   | { type: "startGame" }
   | { type: "submitClue"; text: string }
   | { type: "submitVote"; targetId: string }
+  | { type: "lockVote" }
   | { type: "submitGuess"; word: string }
   | { type: "skipTurn" }
   | { type: "playAgain" };
@@ -109,6 +114,10 @@ export interface ClientView {
   votesInCount: number;
   voteEligibleCount: number;
   yourVoteTargetId: string | null;
+  yourVoteLocked: boolean;
+  lockedPlayerIds: string[];
+  voteEndsAt: number | null;
+  lastVoteCounts: Record<string, number> | null;
   voteCandidates: string[] | null;
   pendingGuessPlayerId: string | null;
   isYourGuess: boolean;
