@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { pickWordPair } from "./words";
+import { pickFromBank } from "./words";
+import type { WordBank } from "./wordbank";
 import type {
   ClientMessage,
   ClientView,
@@ -12,6 +13,7 @@ import type {
 
 export interface Env {
   ROOMS: DurableObjectNamespace<Room>;
+  WORDBANK: DurableObjectNamespace<WordBank>;
 }
 
 const MAX_PLAYERS = 20;
@@ -256,7 +258,7 @@ export class Room extends DurableObject<Env> {
           this.actionUpdateSettings(player, msg.settings);
           break;
         case "startGame":
-          this.actionStartGame(player);
+          await this.actionStartGame(player);
           break;
         case "submitClue":
           this.actionSubmitClue(player, msg.text);
@@ -343,7 +345,9 @@ export class Room extends DurableObject<Env> {
       state.settings.wordMode = partial.wordMode;
     }
     if (partial.disabledPairs) {
-      state.settings.disabledPairs = partial.disabledPairs.filter((id) => typeof id === "string").slice(0, 500);
+      // Has to comfortably exceed the whole bank — disabling all but one pair
+      // means sending (bank size - 1) ids.
+      state.settings.disabledPairs = partial.disabledPairs.filter((id) => typeof id === "string").slice(0, 5000);
     }
     if (partial.customPairs) {
       state.settings.customPairs = partial.customPairs
@@ -356,7 +360,7 @@ export class Room extends DurableObject<Env> {
     }
   }
 
-  private actionStartGame(player: Player) {
+  private async actionStartGame(player: Player) {
     const state = this.state!;
     this.requireHost(player);
     if (state.phase !== "lobby") throw new Error("Game already started");
@@ -373,7 +377,9 @@ export class Room extends DurableObject<Env> {
       throw new Error("Add at least one word pair to use Custom mode");
     }
 
-    const pair = pickWordPair(
+    const bank = await this.env.WORDBANK.getByName("global").list();
+    const pair = pickFromBank(
+      bank.pairs,
       state.settings.difficulty,
       state.settings.disabledPairs,
       state.settings.customPairs,

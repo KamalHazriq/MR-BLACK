@@ -14,19 +14,152 @@
 </head>
 <body>
   <div id="app">
-    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode">
-      <span aria-hidden="true">◐</span>
-    </button>
+    <button id="theme-toggle" class="theme-toggle theme-toggle-fixed" type="button" aria-label="Toggle light/dark mode">◐</button>
 
-    <!-- HOME -->
-    <section id="screen-home" class="screen">
+    <!-- LANDING -->
+    <section id="screen-landing" class="screen screen-wide">
+      <nav class="site-nav">
+        <div class="wrap site-nav-inner">
+          <a class="brand-lockup" href="#top">
+            <img src="/favicon.svg" alt="" class="brand-mark" width="26" height="26" />
+            <strong>Mr. Black</strong>
+          </a>
+          <div class="site-nav-links">
+            <button class="nav-link" data-scroll-to="how">How to play</button>
+            <button class="nav-link" data-scroll-to="faq">FAQ</button>
+            <button class="theme-toggle" type="button" aria-label="Toggle light/dark mode">◐</button>
+            <button id="nav-play" class="btn btn-primary btn-small">Play free &rarr;</button>
+          </div>
+        </div>
+      </nav>
+
+      <header class="hero" id="top">
+        <div class="wrap hero-inner">
+          <span class="badge"><span class="badge-dot"></span> One of you is the impostor</span>
+
+          <svg class="hero-art" viewBox="0 0 200 190" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M38 62Q100 42 162 62Q100 80 38 62Z" />
+            <path d="M68 60V38q0-15 32-15t32 15v22" />
+            <path d="M79 66v15a21 21 0 0 0 42 0V66" />
+            <path d="M100 104 86 118l14 24 14-24z" />
+            <path d="M60 178v-24q0-26 26-36" />
+            <path d="M140 178v-24q0-26-26-36" />
+            <path d="M86 118 58 134" />
+            <path d="M114 118l28 16" />
+          </svg>
+
+          <h1 class="display display-hero">The Mr. Black Game</h1>
+          <p class="lede hero-lede">The social deduction word game for friends — everyone shares a secret word, except the one who gets nothing at all. Up to 20 players, each on their own phone. No app, no signup.</p>
+          <div class="hero-actions">
+            <button class="btn btn-ghost" data-scroll-to="how">How it works</button>
+            <button id="hero-play" class="btn btn-primary">Play now &rarr;</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="band">
+        <div class="wrap prose">
+          <h2 class="display display-sm">A word game where one of you is flying blind</h2>
+          <p>Most players are <strong>Civilians</strong> and share one secret word. One or more are <strong>Undercover</strong> and get a word that's close, but not the same. And at least one is <strong>Mr. Black</strong>, who gets no word at all and has to bluff from nothing.</p>
+          <p>Each round everyone gives a single clue about their word. Then the table argues, votes, and eliminates whoever looks most suspicious. Civilians win by rooting out every impostor; the impostors win by surviving until they match the Civilians in number.</p>
+          <h3>Playing apart, not passing a phone</h3>
+          <p>This version is built for friends who aren't in the same room. Everyone opens the same link on their own device, so your role and word only ever appear on your screen. Get on a voice call for the arguing, and let the app handle roles, turn order, votes, and the log of who said what.</p>
+          <h3>Strategy, by role</h3>
+          <ul>
+            <li><strong>Civilian:</strong> be specific enough that other Civilians know you're one of them, vague enough that Mr. Black can't steal the word.</li>
+            <li><strong>Undercover:</strong> you have a real word, just the wrong one. Listen first, then bend your clue toward the group.</li>
+            <li><strong>Mr. Black:</strong> you have nothing. Read the room, give a clue generic enough to pass, and save your guess for when you're caught.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="band stats-band">
+        <div class="wrap stats">
+          <div class="stat"><span class="stat-num">20</span><span class="stat-label">Players max</span></div>
+          <div class="stat"><span class="stat-num">23</span><span class="stat-label">Categories</span></div>
+          <div class="stat"><span class="stat-num">576</span><span class="stat-label">Word pairs</span></div>
+          <div class="stat"><span class="stat-num">~10s</span><span class="stat-label">To start a round</span></div>
+        </div>
+      </section>
+
+      <section class="band" id="how">
+        <div class="wrap section-head">
+          <p class="eyebrow">How to play</p>
+          <h2 class="display display-sm">Five steps. Your own screen.</h2>
+          <p class="lede">No passing a phone around — everyone joins with a room code and plays from their own device.</p>
+        </div>
+        <div class="wrap steps-list">
+          <div class="step-row"><span class="step-num">01</span><div><strong>Roles</strong><p>Civilians share a word. The Undercover gets a near-miss. Mr. Black gets nothing at all.</p></div></div>
+          <div class="step-row"><span class="step-num">02</span><div><strong>Join</strong><p>The host creates a room and shares the code or invite link. Your role shows only on your screen.</p></div></div>
+          <div class="step-row"><span class="step-num">03</span><div><strong>Clues</strong><p>Take turns typing one short clue about your word. Everything lands in a shared log.</p></div></div>
+          <div class="step-row"><span class="step-num">04</span><div><strong>Vote</strong><p>Argue it out, then everyone votes at once. The most-voted player is out, and their role is revealed.</p></div></div>
+          <div class="step-row"><span class="step-num">05</span><div><strong>Win</strong><p>Civilians win by catching every impostor. A caught Mr. Black gets one guess at the word to steal it back.</p></div></div>
+        </div>
+      </section>
+
+      <section class="band" id="faq">
+        <div class="wrap section-head">
+          <p class="eyebrow">FAQ</p>
+          <h2 class="display display-sm">Questions about Mr. Black</h2>
+        </div>
+        <div class="wrap faq-list">
+          <details class="faq-item"><summary>Do we need an app or an account?</summary><p>No. Everyone opens the link in a browser. Nothing to install, nothing to sign up for.</p></details>
+          <details class="faq-item"><summary>How many people can play?</summary><p>Up to 20 in one room. Five to ten is the sweet spot for a fast, tense game.</p></details>
+          <details class="faq-item"><summary>Do we need to be in the same room?</summary><p>No — it's built for playing apart. Use a voice call for the talking; the app handles roles, turns, votes and the log.</p></details>
+          <details class="faq-item"><summary>What does Mr. Black do?</summary><p>Mr. Black gets no word and has to bluff every round. If caught, they get one guess at the Civilian word — get it right and the impostors steal the round.</p></details>
+          <details class="faq-item"><summary>What's the difference between Undercover and Mr. Black?</summary><p>Undercover has a real word, just a slightly different one. Mr. Black is bluffing completely blind.</p></details>
+          <details class="faq-item"><summary>Can we use our own words?</summary><p>Yes. The host can add custom pairs in the lobby, pick which categories are in play, or switch to Custom mode and use only your own words.</p></details>
+          <details class="faq-item"><summary>Is my word visible to anyone else?</summary><p>No. Your role and word appear only on your device, behind a tap-to-reveal.</p></details>
+          <details class="faq-item"><summary>What if I get disconnected?</summary><p>Reopen the link and you drop straight back into your seat with your role intact, as long as the room is still alive.</p></details>
+        </div>
+      </section>
+
+      <section class="band cta-band">
+        <div class="wrap section-head center">
+          <p class="eyebrow">Ready</p>
+          <h2 class="display display-sm">Gather the group. Hit start.</h2>
+          <p class="lede">It takes about ten seconds.</p>
+          <button id="cta-play" class="btn btn-primary">Start a game &rarr;</button>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <div class="wrap footer-inner">
+          <div class="footer-brand">
+            <div class="brand-lockup">
+              <img src="/favicon.svg" alt="" class="brand-mark" width="24" height="24" />
+              <strong>Mr. Black</strong>
+            </div>
+            <p class="meta">The social deduction word game, in your browser. No download, no signup.</p>
+          </div>
+          <div class="footer-col">
+            <p class="eyebrow">Play</p>
+            <button class="nav-link" data-play>New game</button>
+            <button class="nav-link" data-scroll-to="how">How to play</button>
+          </div>
+          <div class="footer-col">
+            <p class="eyebrow">About</p>
+            <button class="nav-link" data-scroll-to="faq">FAQ</button>
+            <a class="nav-link" href="https://github.com/KamalHazriq/MR-BLACK" target="_blank" rel="noopener">Source</a>
+          </div>
+        </div>
+        <div class="wrap footer-bottom">
+          <span class="meta">Made by Kamal Hazriq · Inspired by the Mr White party game</span>
+          <button id="admin-link" class="meta admin-link" type="button">Admin</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- PLAY -->
+    <section id="screen-home" class="screen screen-app">
       <header class="page-head">
+        <button class="link-btn" data-back-to-landing>&larr; Back</button>
         <div class="brand-lockup">
           <img src="/favicon.svg" alt="" class="brand-mark" width="28" height="28" />
           <span class="eyebrow">Mr. Black</span>
         </div>
         <h1 class="display">One of you<br />is lying.</h1>
-        <p class="lede">The social deduction word game — everyone gets a word, except one of you. Play with up to 20 friends, each on your own phone.</p>
+        <p class="lede">Create a room and share the code, or join one your friend has already started.</p>
       </header>
 
       <div class="card stack-lg">
@@ -56,7 +189,7 @@
     </section>
 
     <!-- LOBBY -->
-    <section id="screen-lobby" class="screen">
+    <section id="screen-lobby" class="screen screen-app">
       <header class="page-head page-head-row">
         <div>
           <p class="eyebrow">Room code</p>
@@ -171,7 +304,7 @@
     </section>
 
     <!-- GAME -->
-    <section id="screen-game" class="screen">
+    <section id="screen-game" class="screen screen-app">
       <header class="game-head">
         <span id="game-round" class="eyebrow"></span>
         <div class="game-head-actions">
@@ -283,6 +416,71 @@
             <summary>What happens if I get disconnected?</summary>
             <p>Just reopen the link — you'll drop right back into your seat with your role and the game state intact, as long as the room is still active.</p>
           </details>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ADMIN -->
+    <aside id="modal-admin" class="modal-overlay hidden">
+      <div class="modal-card modal-card-wide">
+        <div class="modal-header">
+          <h3>Word bank admin</h3>
+          <button id="modal-admin-close" class="btn btn-ghost btn-small">Close</button>
+        </div>
+
+        <div id="admin-gate" class="modal-body">
+          <p class="meta">Enter the admin PIN to manage categories and words for everyone.</p>
+          <div class="custom-word-row">
+            <input id="admin-pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" />
+            <button id="admin-unlock" class="btn btn-primary btn-small" type="button">Unlock</button>
+          </div>
+          <p id="admin-gate-error" class="error-text"></p>
+        </div>
+
+        <div id="admin-panel" class="modal-body hidden">
+          <div class="admin-section">
+            <p class="meta meta-strong">Categories</p>
+            <div class="custom-word-row">
+              <input id="admin-new-category" type="text" maxlength="40" placeholder="New category name" autocomplete="off" />
+              <button id="admin-add-category" class="btn btn-ghost btn-small" type="button">Add</button>
+            </div>
+            <div id="admin-categories" class="category-chips"></div>
+          </div>
+
+          <div class="divider-line"></div>
+
+          <div class="admin-section">
+            <p class="meta meta-strong">Add a word pair</p>
+            <div class="custom-word-row">
+              <input id="admin-civilian" type="text" maxlength="40" placeholder="Civilian word" autocomplete="off" />
+              <input id="admin-undercover" type="text" maxlength="40" placeholder="Undercover word" autocomplete="off" />
+            </div>
+            <div class="custom-word-row">
+              <select id="admin-category" class="admin-select"></select>
+              <select id="admin-difficulty" class="admin-select">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard" selected>Hard</option>
+              </select>
+              <button id="admin-add-pair" class="btn btn-primary btn-small" type="button">Add pair</button>
+            </div>
+          </div>
+
+          <div class="divider-line"></div>
+
+          <div class="admin-section">
+            <div class="admin-toolbar">
+              <p class="meta meta-strong">Words <span id="admin-count" class="meta"></span></p>
+              <button id="admin-restore" class="nav-link" type="button">Restore built-ins</button>
+            </div>
+            <div class="custom-word-row">
+              <input id="admin-search" type="text" placeholder="Search words…" autocomplete="off" />
+              <select id="admin-filter" class="admin-select"></select>
+            </div>
+            <div id="admin-list" class="admin-list"></div>
+          </div>
+
+          <p id="admin-error" class="error-text"></p>
         </div>
       </div>
     </aside>

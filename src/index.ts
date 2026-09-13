@@ -1,11 +1,19 @@
 import { Room } from "./room";
-import { listWordPairs } from "./words";
+import { WordBank } from "./wordbank";
 
-export { Room };
+export { Room, WordBank };
 
 export interface Env {
   ROOMS: DurableObjectNamespace<Room>;
+  WORDBANK: DurableObjectNamespace<WordBank>;
   ASSETS: Fetcher;
+  ADMIN_PIN?: string;
+}
+
+function pinMatches(env: Env, pin: unknown): boolean {
+  const expected = env.ADMIN_PIN;
+  if (!expected) return false;
+  return typeof pin === "string" && pin === expected;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I
@@ -38,7 +46,62 @@ export default {
 
     try {
       if (request.method === "GET" && path === "/api/word-pairs") {
-        return json(listWordPairs());
+        const bank = await env.WORDBANK.getByName("global").list();
+        return json(bank.pairs);
+      }
+
+      if (request.method === "POST" && path === "/api/admin") {
+        if (!env.ADMIN_PIN) {
+          return json({ error: "Admin is not configured on this deployment" }, 503);
+        }
+        const body = await request
+          .json<{ pin?: string; op?: string; payload?: Record<string, string> }>()
+          .catch(() => ({}) as { pin?: string; op?: string; payload?: Record<string, string> });
+        if (!pinMatches(env, body.pin)) {
+          return json({ error: "Wrong PIN" }, 401);
+        }
+
+        const bank = env.WORDBANK.getByName("global");
+        const p = body.payload ?? {};
+        switch (body.op) {
+          case "auth":
+            break;
+          case "addPair":
+            await bank.addPair({
+              civilian: p.civilian ?? "",
+              undercover: p.undercover ?? "",
+              category: p.category ?? "",
+              difficulty: p.difficulty ?? "hard",
+            });
+            break;
+          case "updatePair":
+            await bank.updatePair(p.id ?? "", {
+              civilian: p.civilian ?? "",
+              undercover: p.undercover ?? "",
+              category: p.category ?? "",
+              difficulty: p.difficulty ?? "hard",
+            });
+            break;
+          case "deletePair":
+            await bank.deletePair(p.id ?? "");
+            break;
+          case "addCategory":
+            await bank.addCategory(p.name ?? "");
+            break;
+          case "deleteCategory":
+            await bank.deleteCategory(p.name ?? "");
+            break;
+          case "renameCategory":
+            await bank.renameCategory(p.from ?? "", p.to ?? "");
+            break;
+          case "restoreBuiltins":
+            await bank.restoreBuiltins();
+            break;
+          default:
+            return json({ error: "Unknown operation" }, 400);
+        }
+
+        return json({ ok: true, ...(await bank.list()) });
       }
 
       if (request.method === "POST" && path === "/api/rooms") {

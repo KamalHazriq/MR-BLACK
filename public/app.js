@@ -14,18 +14,20 @@ function applyTheme(theme) {
   } else {
     document.documentElement.removeAttribute("data-theme");
   }
-  const btn = document.getElementById("theme-toggle");
-  if (btn) btn.textContent = effectiveTheme() === "dark" ? "◑" : "◐";
+  const glyph = effectiveTheme() === "dark" ? "◑" : "◐";
+  document.querySelectorAll(".theme-toggle").forEach((btn) => (btn.textContent = glyph));
 }
 
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  const next = effectiveTheme() === "dark" ? "light" : "dark";
-  try {
-    localStorage.setItem(THEME_KEY, next);
-  } catch {
-    // ignore storage errors (e.g. private browsing)
-  }
-  applyTheme(next);
+document.querySelectorAll(".theme-toggle").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = effectiveTheme() === "dark" ? "light" : "dark";
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // ignore storage errors (e.g. private browsing)
+    }
+    applyTheme(next);
+  });
 });
 
 try {
@@ -36,6 +38,7 @@ try {
 
 const el = (id) => document.getElementById(id);
 const screens = {
+  landing: el("screen-landing"),
   home: el("screen-home"),
   lobby: el("screen-lobby"),
   game: el("screen-game"),
@@ -45,7 +48,30 @@ function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle("active", key === name);
   }
+  window.scrollTo(0, 0);
 }
+
+// ---- Landing page navigation ----
+
+function goToPlay() {
+  showScreen("home");
+  el("home-name").focus();
+}
+
+document.querySelectorAll("#nav-play, #hero-play, #cta-play, [data-play]").forEach((btn) => {
+  btn.addEventListener("click", goToPlay);
+});
+
+document.querySelectorAll("[data-scroll-to]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = document.getElementById(btn.dataset.scrollTo);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+document.querySelectorAll("[data-back-to-landing]").forEach((btn) => {
+  btn.addEventListener("click", () => showScreen("landing"));
+});
 
 function escapeHtml(str) {
   return String(str)
@@ -380,6 +406,190 @@ el("custom-add").addEventListener("click", addCustomPair);
   el(id).addEventListener("keydown", (e) => {
     if (e.key === "Enter") addCustomPair();
   });
+});
+
+// ---- Admin panel ----
+
+let adminPin = null;
+let adminPairs = [];
+let adminCategories = [];
+
+async function adminCall(op, payload = {}) {
+  const res = await fetch("/api/admin", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pin: adminPin, op, payload }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (data.pairs) {
+    adminPairs = data.pairs;
+    adminCategories = data.categories || [];
+    renderAdmin();
+    // The lobby picker caches the bank at load, so refresh it after any edit.
+    if (op !== "auth") loadWordPairs();
+  }
+  return data;
+}
+
+function openAdmin() {
+  el("modal-admin").classList.remove("hidden");
+  if (!adminPin) {
+    el("admin-gate").classList.remove("hidden");
+    el("admin-panel").classList.add("hidden");
+    el("admin-pin").focus();
+  }
+}
+
+el("admin-link").addEventListener("click", openAdmin);
+el("modal-admin-close").addEventListener("click", () => el("modal-admin").classList.add("hidden"));
+
+async function unlockAdmin() {
+  const pin = el("admin-pin").value.trim();
+  if (!pin) return;
+  adminPin = pin;
+  try {
+    await adminCall("auth");
+    el("admin-gate-error").textContent = "";
+    el("admin-gate").classList.add("hidden");
+    el("admin-panel").classList.remove("hidden");
+    el("admin-pin").value = "";
+  } catch (err) {
+    adminPin = null;
+    el("admin-gate-error").textContent = err.message;
+  }
+}
+
+el("admin-unlock").addEventListener("click", unlockAdmin);
+el("admin-pin").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") unlockAdmin();
+});
+
+function adminError(err) {
+  el("admin-error").textContent = err.message || String(err);
+  setTimeout(() => (el("admin-error").textContent = ""), 4000);
+}
+
+function renderAdmin() {
+  // Category chips, each removable
+  el("admin-categories").innerHTML = adminCategories
+    .map((c) => {
+      const n = adminPairs.filter((p) => p.category === c).length;
+      return `<span class="cat-chip active" data-admin-category="${escapeHtml(c)}">${escapeHtml(c)} <span class="cat-chip-count">${n}</span> <button class="cat-chip-x" data-delete-category="${escapeHtml(c)}" title="Delete category">&times;</button></span>`;
+    })
+    .join("");
+
+  const options = adminCategories.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  const keepCategory = el("admin-category").value;
+  const keepFilter = el("admin-filter").value;
+  el("admin-category").innerHTML = options;
+  el("admin-filter").innerHTML = `<option value="">All categories</option>${options}`;
+  if (keepCategory) el("admin-category").value = keepCategory;
+  if (keepFilter) el("admin-filter").value = keepFilter;
+
+  const search = el("admin-search").value.trim().toLowerCase();
+  const filter = el("admin-filter").value;
+  const shown = adminPairs.filter((p) => {
+    if (filter && p.category !== filter) return false;
+    if (!search) return true;
+    return `${p.civilian} ${p.undercover}`.toLowerCase().includes(search);
+  });
+
+  el("admin-count").textContent = `${shown.length} of ${adminPairs.length}`;
+  el("admin-list").innerHTML = shown
+    .slice(0, 300)
+    .map(
+      (p) => `
+      <div class="admin-row" data-id="${escapeHtml(p.id)}">
+        <div class="admin-row-main">
+          <span>${escapeHtml(p.civilian)} / ${escapeHtml(p.undercover)}</span>
+          <span class="admin-row-meta">${escapeHtml(p.category)} · ${escapeHtml(p.difficulty)}${p.builtin ? "" : " · custom"}</span>
+        </div>
+        <button data-edit="${escapeHtml(p.id)}">Edit</button>
+        <button class="danger" data-delete="${escapeHtml(p.id)}">Delete</button>
+      </div>`
+    )
+    .join("");
+}
+
+el("admin-search").addEventListener("input", renderAdmin);
+el("admin-filter").addEventListener("change", renderAdmin);
+
+el("admin-add-pair").addEventListener("click", async () => {
+  try {
+    await adminCall("addPair", {
+      civilian: el("admin-civilian").value,
+      undercover: el("admin-undercover").value,
+      category: el("admin-category").value,
+      difficulty: el("admin-difficulty").value,
+    });
+    el("admin-civilian").value = "";
+    el("admin-undercover").value = "";
+    el("admin-civilian").focus();
+  } catch (err) {
+    adminError(err);
+  }
+});
+
+el("admin-add-category").addEventListener("click", async () => {
+  const name = el("admin-new-category").value.trim();
+  if (!name) return;
+  try {
+    await adminCall("addCategory", { name });
+    el("admin-new-category").value = "";
+  } catch (err) {
+    adminError(err);
+  }
+});
+
+el("admin-categories").addEventListener("click", async (e) => {
+  const del = e.target.closest("[data-delete-category]");
+  if (!del) return;
+  const name = del.dataset.deleteCategory;
+  const n = adminPairs.filter((p) => p.category === name).length;
+  if (!confirm(`Delete "${name}" and its ${n} word pair${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
+  try {
+    await adminCall("deleteCategory", { name });
+  } catch (err) {
+    adminError(err);
+  }
+});
+
+el("admin-list").addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("[data-edit]");
+  const delBtn = e.target.closest("[data-delete]");
+  try {
+    if (delBtn) {
+      const pair = adminPairs.find((p) => p.id === delBtn.dataset.delete);
+      if (!pair) return;
+      if (!confirm(`Delete "${pair.civilian} / ${pair.undercover}"?`)) return;
+      await adminCall("deletePair", { id: pair.id });
+      return;
+    }
+    if (editBtn) {
+      const pair = adminPairs.find((p) => p.id === editBtn.dataset.edit);
+      if (!pair) return;
+      const civilian = prompt("Civilian word", pair.civilian);
+      if (civilian === null) return;
+      const undercover = prompt("Undercover word", pair.undercover);
+      if (undercover === null) return;
+      const category = prompt("Category", pair.category);
+      if (category === null) return;
+      const difficulty = prompt("Difficulty (easy / medium / hard)", pair.difficulty);
+      if (difficulty === null) return;
+      await adminCall("updatePair", { id: pair.id, civilian, undercover, category, difficulty });
+    }
+  } catch (err) {
+    adminError(err);
+  }
+});
+
+el("admin-restore").addEventListener("click", async () => {
+  try {
+    await adminCall("restoreBuiltins");
+  } catch (err) {
+    adminError(err);
+  }
 });
 
 loadWordPairs();
@@ -885,13 +1095,16 @@ function renderLog(view) {
     return;
   }
 
-  showScreen("home");
-
-  // Invite links land here as /?room=CODE — prefill the code so all they type is a name.
+  // Invite links land here as /?room=CODE — skip the landing page, prefill the
+  // code, and let them straight into the join form.
   const invited = new URLSearchParams(location.search).get("room");
   if (invited) {
+    showScreen("home");
     el("home-code").value = invited.toUpperCase().slice(0, 6);
     el("home-error").textContent = "Room code filled in — add your name to join.";
     el("home-name").focus();
+    return;
   }
+
+  showScreen("landing");
 })();

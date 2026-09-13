@@ -644,6 +644,35 @@ export function listWordPairs(): Array<WordPair & { id: string }> {
   return WORD_PAIRS.map((p, i) => ({ ...p, id: wordPairId(i) }));
 }
 
+// Same selection rules as pickWordPair, but over a bank supplied at runtime
+// (the admin-editable word bank) rather than the static built-in list.
+export function pickFromBank(
+  bank: Array<{ id: string; civilian: string; undercover: string; category: string; difficulty: string }>,
+  difficulty: "any" | "easy" | "medium" | "hard",
+  disabledIds: string[] = [],
+  customPairs: Array<{ civilian: string; undercover: string }> = [],
+  mode: "all" | "pick" | "custom" = "all"
+): DrawnPair {
+  const custom: DrawnPair[] = customPairs.map((p) => ({
+    civilian: p.civilian,
+    undercover: p.undercover,
+    category: "Your words",
+  }));
+
+  if (mode === "custom" && custom.length > 0) {
+    return custom[Math.floor(Math.random() * custom.length)];
+  }
+
+  const disabled = new Set(disabledIds);
+  const matches = (p: { difficulty: string }) => difficulty === "any" || p.difficulty === difficulty;
+  const eligible = bank.filter((p) => matches(p) && (mode === "all" || !disabled.has(p.id)));
+
+  let pool: DrawnPair[] = [...eligible, ...custom];
+  if (pool.length === 0) pool = bank.filter(matches);
+  if (pool.length === 0) pool = bank.length > 0 ? bank : WORD_PAIRS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // Host-written pairs are always eligible — they were added on purpose, so they
 // skip both the difficulty filter and the per-pair toggles.
 export function pickWordPair(
