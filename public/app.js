@@ -89,10 +89,24 @@ function roleLabel(role) {
   return "Unknown";
 }
 
+// Written to both stores: sessionStorage keeps each tab's identity separate
+// (two players can share one browser), while localStorage survives closing the
+// tab so reopening the link drops you back into your seat.
 function saveSession(session) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  const raw = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(SESSION_KEY, raw);
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.setItem(SESSION_KEY, raw);
+  } catch {
+    // ignore
+  }
 }
-function loadSession() {
+// This tab's own session — a refresh resumes silently.
+function loadTabSession() {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -100,8 +114,29 @@ function loadSession() {
     return null;
   }
 }
+
+// A session left behind by a closed tab. Offered as an explicit "rejoin"
+// rather than resumed automatically, so a second player opening the game in
+// another tab of the same browser doesn't get connected as the first one.
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 let socket = null;
@@ -758,13 +793,6 @@ el("game-role-badge").addEventListener("click", () => {
   if (lastView) render(lastView);
 });
 
-el("game-log-toggle").addEventListener("click", () => {
-  el("game-log-panel").classList.remove("hidden");
-});
-el("game-log-close").addEventListener("click", () => {
-  el("game-log-panel").classList.add("hidden");
-});
-
 // ---- Rendering ----
 
 let lastTurnPlayerId = null;
@@ -804,54 +832,53 @@ function renderLobby(view) {
     })
     .join("");
 
+  // Everyone can see and change the setup; only the host can start the round.
   const isHost = view.you.isHost;
-  el("lobby-settings").classList.toggle("hidden", !isHost);
+  el("lobby-settings").classList.remove("hidden");
+  el("lobby-start").classList.toggle("hidden", !isHost);
   el("lobby-nonhost-hint").classList.toggle("hidden", isHost);
 
-  if (isHost) {
-    el("setting-undercover").textContent = view.settings.undercoverCount;
-    el("setting-blank").textContent = view.settings.blankCount;
-    document.querySelectorAll("#setting-difficulty .pill").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.difficulty === view.settings.difficulty);
-    });
-    document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
-      btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
-    });
+  el("setting-undercover").textContent = view.settings.undercoverCount;
+  el("setting-blank").textContent = view.settings.blankCount;
+  document.querySelectorAll("#setting-difficulty .pill").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.difficulty === view.settings.difficulty);
+  });
+  document.querySelectorAll("#setting-discussion .pill").forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.discussion) === view.settings.discussionSeconds);
+  });
 
-    renderCustomPairs(view.settings.customPairs);
-    renderWordMode(view);
+  renderCustomPairs(view.settings.customPairs);
+  renderWordMode(view);
 
-    const impostors = view.settings.undercoverCount + view.settings.blankCount;
-    const civilians = view.players.length - impostors;
-    let hint = "";
-    let canStart = true;
-    if (view.players.length < 3) {
-      hint = `Need at least 3 players (${view.players.length}/3).`;
-      canStart = false;
-    } else if (civilians <= impostors) {
-      hint = "Civilians must outnumber Undercover + Mr. Black.";
-      canStart = false;
-    } else if (view.settings.wordMode === "custom" && view.settings.customPairs.length === 0) {
-      hint = "Custom mode needs at least one of your own word pairs.";
-      canStart = false;
-    } else {
-      hint = `${civilians} Civilian${civilians === 1 ? "" : "s"} · ${view.settings.undercoverCount} Undercover · ${view.settings.blankCount} Mr. Black`;
-    }
-    el("lobby-hint").textContent = hint;
-    el("lobby-start").disabled = !canStart;
+  const impostors = view.settings.undercoverCount + view.settings.blankCount;
+  const civilians = view.players.length - impostors;
+  let hint = "";
+  let canStart = true;
+  if (view.players.length < 3) {
+    hint = `Need at least 3 players (${view.players.length}/3).`;
+    canStart = false;
+  } else if (civilians <= impostors) {
+    hint = "Civilians must outnumber Undercover + Mr. Black.";
+    canStart = false;
+  } else if (view.settings.wordMode === "custom" && view.settings.customPairs.length === 0) {
+    hint = "Custom mode needs at least one of your own word pairs.";
+    canStart = false;
   } else {
-    const impostors = view.settings.undercoverCount + view.settings.blankCount;
-    const timerNote = view.settings.discussionSeconds > 0 ? ` · ${view.settings.discussionSeconds}s discussion timer` : "";
-    el("lobby-nonhost-hint").textContent =
-      `Waiting for the host to start — ${view.settings.undercoverCount} Undercover, ${view.settings.blankCount} Mr. Black (${impostors} impostor${impostors === 1 ? "" : "s"} total)${timerNote}.`;
+    hint = `${civilians} Civilian${civilians === 1 ? "" : "s"} · ${view.settings.undercoverCount} Undercover · ${view.settings.blankCount} Mr. Black`;
   }
+  el("lobby-hint").textContent = hint;
+  el("lobby-start").disabled = !canStart;
+
+  const host = view.players.find((p) => p.isHost);
+  el("lobby-nonhost-hint").textContent = canStart
+    ? `Anyone can tweak the setup — waiting for ${host?.name || "the host"} to start.`
+    : hint;
 }
 
 function renderGame(view) {
   renderRoleBadge(view);
-  renderRoster(view);
+  renderPlayers(view);
   renderCenterPanel(view);
-  renderLog(view);
   const phaseLabel = {
     clue: "Clues",
     discussion: "Discussion",
@@ -877,16 +904,41 @@ function renderRoleBadge(view) {
   badge.innerHTML = `<span class="role-name">${escapeHtml(roleLabel(role))}</span><span class="role-word">${escapeHtml(wordLine)}</span>`;
 }
 
-function renderRoster(view) {
+// Every player with their clues listed in round order, so you can read the
+// whole game at a glance instead of digging through a log.
+function renderPlayers(view) {
   const revealed = view.revealedRoles || {};
-  el("game-roster").innerHTML = view.players
+  el("game-players").innerHTML = view.players
     .map((p) => {
-      const classes = ["roster-chip"];
+      const classes = ["play-row"];
       if (p.id === view.turnPlayerId) classes.push("turn");
       if (!p.alive) classes.push("dead");
-      const roleTag = revealed[p.id] ? ` — ${escapeHtml(roleLabel(revealed[p.id]))}` : "";
-      const you = p.id === view.you.id ? " (you)" : "";
-      return `<span class="${classes.join(" ")}">${escapeHtml(p.name)}${escapeHtml(you)}${roleTag}</span>`;
+
+      const you = p.id === view.you.id ? ' <span class="play-you">you</span>' : "";
+      const role = revealed[p.id]
+        ? `<span class="play-role">${escapeHtml(roleLabel(revealed[p.id]))}</span>`
+        : p.id === view.turnPlayerId
+          ? '<span class="play-role play-turn">their turn</span>'
+          : !p.connected
+            ? '<span class="play-role">away</span>'
+            : "";
+
+      const clues = view.clues
+        .filter((c) => c.playerId === p.id)
+        .sort((a, b) => a.round - b.round)
+        .map(
+          (c) => `<li><span class="clue-round">R${c.round}</span>${escapeHtml(c.text)}</li>`
+        )
+        .join("");
+
+      return `
+        <div class="${classes.join(" ")}">
+          <div class="play-row-head">
+            <span class="play-name">${escapeHtml(p.name)}${you}</span>
+            ${role}
+          </div>
+          ${clues ? `<ol class="play-clues">${clues}</ol>` : '<p class="play-empty">No clue yet</p>'}
+        </div>`;
     })
     .join("");
 }
@@ -907,27 +959,12 @@ function renderCenterPanel(view) {
   panel.innerHTML = "";
 }
 
-function clueFeedHtml(view) {
-  const roundClues = view.clues.filter((c) => c.round === view.round);
-  if (!roundClues.length) return "";
-  return (
-    `<div class="clue-feed">` +
-    roundClues
-      .map((c) => {
-        const p = view.players.find((pp) => pp.id === c.playerId);
-        return `<div class="clue-feed-item"><strong>${escapeHtml(p?.name || "?")}</strong> — "${escapeHtml(c.text)}"</div>`;
-      })
-      .join("") +
-    `</div>`
-  );
-}
-
 function renderDiscussionPhase(panel, view) {
   panel.innerHTML = `
     <h2>Talk it over</h2>
     <div id="discussion-countdown" class="discussion-countdown">--:--</div>
     <p class="meta center">Voting opens automatically when the clock runs out.</p>
-    ${clueFeedHtml(view)}
+
     ${view.you.isHost ? '<button id="discussion-skip" class="btn btn-ghost btn-small">Skip to vote</button>' : ""}
   `;
 
@@ -965,7 +1002,7 @@ function renderCluePhase(panel, view) {
     html += `<h2>Clue round</h2><p>Waiting for <strong>${escapeHtml(turnPlayer?.name || "?")}</strong> to give a clue&hellip;</p>`;
   }
 
-  html += clueFeedHtml(view);
+
 
   if (view.you.isHost) {
     html += `<button id="clue-skip" class="btn btn-ghost btn-small">Skip current player</button>`;
@@ -1074,25 +1111,29 @@ function renderGameOver(panel, view) {
   el("play-again")?.addEventListener("click", () => send({ type: "playAgain" }));
 }
 
-function renderLog(view) {
-  el("game-log-list").innerHTML = view.log
-    .map((entry) => {
-      const time = new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      return `<li><span class="log-time">${time}</span>${escapeHtml(entry.text)}</li>`;
-    })
-    .join("");
-  const list = el("game-log-list");
-  list.scrollTop = list.scrollHeight;
-}
-
 // ---- Boot ----
 
 (function boot() {
-  const session = loadSession();
-  if (session) {
+  const tabSession = loadTabSession();
+  if (tabSession) {
     showScreen("lobby");
-    connect(session);
+    connect(tabSession);
     return;
+  }
+
+  // A seat left behind by a closed tab — offer it back, don't assume.
+  const saved = loadSavedSession();
+  if (saved?.code) {
+    el("rejoin-banner").classList.remove("hidden");
+    el("rejoin-code").textContent = saved.code;
+    el("rejoin-btn").addEventListener("click", () => {
+      showScreen("lobby");
+      connect(saved);
+    });
+    el("rejoin-dismiss").addEventListener("click", () => {
+      clearSession();
+      el("rejoin-banner").classList.add("hidden");
+    });
   }
 
   // Invite links land here as /?room=CODE — skip the landing page, prefill the
@@ -1101,10 +1142,9 @@ function renderLog(view) {
   if (invited) {
     showScreen("home");
     el("home-code").value = invited.toUpperCase().slice(0, 6);
-    el("home-error").textContent = "Room code filled in — add your name to join.";
     el("home-name").focus();
     return;
   }
 
-  showScreen("landing");
+  showScreen(saved?.code ? "home" : "landing");
 })();

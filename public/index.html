@@ -162,6 +162,17 @@
         <p class="lede">Create a room and share the code, or join one your friend has already started.</p>
       </header>
 
+      <div id="rejoin-banner" class="card rejoin-banner hidden">
+        <div>
+          <p class="meta meta-strong">You were in room <span id="rejoin-code"></span></p>
+          <p class="meta">Closed the tab by accident? Take your seat back.</p>
+        </div>
+        <div class="rejoin-actions">
+          <button id="rejoin-btn" class="btn btn-primary btn-small" type="button">Rejoin</button>
+          <button id="rejoin-dismiss" class="link-btn" type="button">Not me</button>
+        </div>
+      </div>
+
       <div class="card stack-lg">
         <div class="field">
           <label class="section-label" for="home-name">Your name</label>
@@ -309,7 +320,6 @@
         <span id="game-round" class="eyebrow"></span>
         <div class="game-head-actions">
           <button id="sound-toggle" class="btn btn-ghost btn-small" type="button" aria-label="Toggle turn sound">Sound on</button>
-          <button id="game-log-toggle" class="btn btn-ghost btn-small">Log</button>
         </div>
       </header>
 
@@ -317,19 +327,9 @@
         <span class="role-badge-hint">Tap to reveal your role</span>
       </button>
 
-      <div id="game-roster" class="roster"></div>
-
       <div id="game-center" class="card center-panel"></div>
 
-      <aside id="game-log-panel" class="modal-overlay hidden">
-        <div class="modal-card">
-          <div class="modal-header">
-            <h3>Game log</h3>
-            <button id="game-log-close" class="btn btn-ghost btn-small">Close</button>
-          </div>
-          <ol id="game-log-list" class="log-list"></ol>
-        </div>
-      </aside>
+      <div id="game-players" class="card play-list"></div>
 
       <p id="game-error" class="error-text"></p>
     </section>

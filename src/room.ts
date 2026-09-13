@@ -327,9 +327,9 @@ export class Room extends DurableObject<Env> {
     if (!player.isHost) throw new Error("Only the host can do that");
   }
 
-  private actionUpdateSettings(player: Player, partial: Partial<RoomState["settings"]>) {
+  // Anyone in the room can adjust the setup — only starting the round is host-only.
+  private actionUpdateSettings(_player: Player, partial: Partial<RoomState["settings"]>) {
     const state = this.state!;
-    this.requireHost(player);
     if (state.phase !== "lobby") throw new Error("Cannot change settings mid-game");
     if (typeof partial.undercoverCount === "number") {
       state.settings.undercoverCount = Math.max(0, Math.min(6, Math.round(partial.undercoverCount)));

@@ -42,14 +42,26 @@ export class WordBank extends DurableObject<Env> {
       )
     `);
     sql.exec(`CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY)`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
 
-    const count = sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM pairs").one().n;
-    if (count === 0) this.seedBuiltins();
+    // Built-ins are append-only, so anything past the high-water mark is new
+    // and gets added. Older ones the admin deleted stay deleted.
+    const seeded = Number(
+      sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'builtin_count'").toArray()[0]?.value ?? 0
+    );
+    if (WORD_PAIRS.length > seeded) {
+      this.seedBuiltins(seeded);
+      sql.exec(
+        "INSERT INTO meta (key, value) VALUES ('builtin_count', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        String(WORD_PAIRS.length)
+      );
+    }
   }
 
-  private seedBuiltins() {
+  private seedBuiltins(fromIndex = 0) {
     const sql = this.ctx.storage.sql;
     WORD_PAIRS.forEach((p, i) => {
+      if (i < fromIndex) return;
       sql.exec(
         "INSERT OR IGNORE INTO pairs (id, civilian, undercover, category, difficulty, builtin) VALUES (?, ?, ?, ?, ?, 1)",
         `b${wordPairId(i)}`,
